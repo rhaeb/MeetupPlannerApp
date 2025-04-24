@@ -1,7 +1,6 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } from "react-native"
-import { useNavigation } from "@react-navigation/native"
-import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import Ionicons from "react-native-vector-icons/Ionicons"
+import { Link } from "expo-router/"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { colors } from "@/constants/colors"
 import Button from "@/components/Button"
@@ -9,19 +8,7 @@ import { Card, CardContent } from "@/components/Card"
 import Avatar from "@/components/Avatar"
 import Badge from "@/components/Badge"
 
-// Define your navigation types
-type RootStackParamList = {
-  Settings: undefined;
-  EditProfile: undefined;
-  Notifications: undefined;
-  // Add other screens as needed
-};
-
-type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
 const ProfileScreen = () => {
-  const navigation = useNavigation<ProfileScreenNavigationProp>()
-
   // Sample user data
   const user = {
     name: "Alex Reyes",
@@ -87,9 +74,11 @@ const ProfileScreen = () => {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Profile</Text>
           <View style={styles.headerButtons}>
-            <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Settings")}>
-              <Ionicons name="settings-outline" size={20} color={colors.gray[700]} />
-            </TouchableOpacity>
+          <Link href="/settings" asChild>
+              <TouchableOpacity style={styles.iconButton}>
+                <Ionicons name="settings-outline" size={20} color={colors.gray[700]} />
+              </TouchableOpacity>
+            </Link>
             <TouchableOpacity style={styles.iconButton}>
               <Ionicons name="log-out-outline" size={20} color={colors.gray[700]} />
             </TouchableOpacity>
@@ -117,7 +106,7 @@ const ProfileScreen = () => {
           <Button
             title="Edit Profile"
             icon={<Ionicons name="create-outline" size={16} color={colors.white} />}
-            onPress={() => navigation.navigate("EditProfile")}
+            onPress={() => {}}
             style={styles.editButton}
           />
         </View>

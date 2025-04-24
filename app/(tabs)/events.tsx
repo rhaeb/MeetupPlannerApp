@@ -1,24 +1,15 @@
 import { useState } from "react"
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, SafeAreaView } from "react-native"
-import { useNavigation } from "@react-navigation/native"
-import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import Ionicons from "react-native-vector-icons/Ionicons"
+import { Link } from "expo-router/"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { colors } from "@/constants/colors"
 import Button from "@/components/Button"
 import { Card, CardContent } from "@/components/Card"
 import Badge from "@/components/Badge"
 
-type RootStackParamList = {
-  EventDetails: { id: string };
-};
-
-type EventsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EventDetails'>;
-
 const EventsScreen = () => {
-  const navigation = useNavigation<EventsScreenNavigationProp>()
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming")
-
   const upcomingEvents = [
     {
       id: "1",
@@ -103,10 +94,8 @@ const EventsScreen = () => {
           {activeTab === "upcoming" ? (
             <View style={styles.eventsList}>
               {upcomingEvents.map((event) => (
-                <TouchableOpacity 
-                  key={event.id} 
-                  onPress={() => navigation.navigate("EventDetails", { id: event.id })}
-                >
+                 <Link key={event.id} href={`/event-details/${event.id}`} asChild>
+                <TouchableOpacity >
                   <Card style={styles.eventCard}>
                     <CardContent padding={false}>
                       <View style={styles.eventContent}>
@@ -139,15 +128,14 @@ const EventsScreen = () => {
                     </CardContent>
                   </Card>
                 </TouchableOpacity>
+                </Link>
               ))}
             </View>
           ) : (
             <View style={styles.eventsList}>
               {pastEvents.map((event) => (
-                <TouchableOpacity 
-                  key={event.id} 
-                  onPress={() => navigation.navigate("EventDetails", { id: event.id })}
-                >
+                <Link key={event.id} href={`/event-details/${event.id}`} asChild>
+                <TouchableOpacity >
                   <Card style={{...styles.eventCard, ...styles.pastEventCard}}>
                     <CardContent padding={false}>
                       <View style={styles.eventContent}>
@@ -171,6 +159,7 @@ const EventsScreen = () => {
                     </CardContent>
                   </Card>
                 </TouchableOpacity>
+                </Link>
               ))}
             </View>
           )}

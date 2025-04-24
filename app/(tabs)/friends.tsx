@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, TextInput } from "react-native"
-import { useNavigation } from "@react-navigation/native"
-import Ionicons from "react-native-vector-icons/Ionicons"
+import { Link } from "expo-router/"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { colors } from "@/constants/colors"
 import Button from "@/components/Button"
@@ -8,8 +8,6 @@ import { Card, CardContent } from "@/components/Card"
 import Avatar from "@/components/Avatar"
 
 const FriendsScreen = () => {
-  const navigation = useNavigation()
-
   // Sample friends data
   const friends = [
     {
@@ -75,6 +73,7 @@ const FriendsScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.headerTitle}>Friends</Text>
@@ -88,6 +87,7 @@ const FriendsScreen = () => {
           />
         </View>
 
+        {/* Search */}
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={16} color={colors.gray[400]} style={styles.searchIcon} />
           <TextInput
@@ -97,6 +97,7 @@ const FriendsScreen = () => {
           />
         </View>
 
+        {/* Friends List */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Your Friends</Text>
           <View style={styles.friendsList}>
@@ -114,7 +115,17 @@ const FriendsScreen = () => {
                           <Text style={styles.friendName}>{friend.name}</Text>
                           <Text style={styles.friendUsername}>{friend.username}</Text>
                         </View>
-                        <Button title="Message" variant="outline" size="sm" onPress={() => {}} />
+                        <Link href={`/messages/${friend.id}`} asChild>
+                        <Button
+                            title="Message"
+                            variant="outline"
+                            size="sm"
+                            onPress={() => {
+                                console.log('Message button pressed');
+                                // You can add navigation or other logic here
+                            }}
+                            />
+                        </Link>
                       </View>
                       <View style={styles.mutualFriends}>
                         <Ionicons name="people-outline" size={12} color={colors.gray[500]} />
@@ -128,6 +139,7 @@ const FriendsScreen = () => {
           </View>
         </View>
 
+        {/* Suggested Friends */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Suggested Friends</Text>
           <View style={styles.friendsList}>

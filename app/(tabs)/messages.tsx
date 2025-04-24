@@ -1,24 +1,12 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, TextInput } from "react-native"
-import { useNavigation } from "@react-navigation/native"
-import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import Ionicons from "react-native-vector-icons/Ionicons"
+import { Link } from "expo-router/"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { colors } from "@/constants/colors"
 import { Card, CardContent } from "@/components/Card"
 import Avatar from "@/components/Avatar"
 import Badge from "@/components/Badge"
-
-// Define your navigation types
-type RootStackParamList = {
-  Chat: { id: string };
-  DirectMessage: { id: string };
-};
-
-type MessagesScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
 const MessagesScreen = () => {
-  const navigation = useNavigation<MessagesScreenNavigationProp>()
-
   // Sample conversations data
   const conversations = [
     {
@@ -94,12 +82,12 @@ const MessagesScreen = () => {
 
         <ScrollView showsVerticalScrollIndicator={false}>
           {conversations.map((conversation) => (
-            <TouchableOpacity
-              key={conversation.id}
-              onPress={() =>
-                navigation.navigate(conversation.isGroup ? "Chat" : "DirectMessage", { id: conversation.id })
-              }
-            >
+             <Link 
+             key={conversation.id} 
+             href={conversation.isGroup ? `/chat/${conversation.id}` : `/direct-message/${conversation.id}`} 
+             asChild
+           >
+            <TouchableOpacity>
               <Card style={styles.conversationCard}>
                 <CardContent padding={false}>
                   <View style={styles.conversationContent}>
@@ -131,6 +119,7 @@ const MessagesScreen = () => {
                 </CardContent>
               </Card>
             </TouchableOpacity>
+            </Link>
           ))}
         </ScrollView>
       </View>

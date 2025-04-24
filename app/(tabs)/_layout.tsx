@@ -1,23 +1,9 @@
-import { Tabs } from 'expo-router/tabs';
+import { Tabs } from 'expo-router/';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/colors';
 
-export default function TabLayout() {
+export default function TabsLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: colors.green[600],
-        tabBarInactiveTintColor: colors.gray[500],
-        tabBarStyle: {
-          borderTopWidth: 1,
-          borderTopColor: colors.gray[200],
-          backgroundColor: colors.white,
-          height: 60,
-          paddingBottom: 10,
-          paddingTop: 5,
-        },
-      }}
-    >
+    <Tabs screenOptions={{ headerShown: false }}>
       <Tabs.Screen
         name="home"
         options={{
@@ -61,10 +47,6 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),
-          tabBarBadge: 3,
-          tabBarBadgeStyle: {
-            backgroundColor: colors.green[600],
-          },
         }}
       />
     </Tabs>
