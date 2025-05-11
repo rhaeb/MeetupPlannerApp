@@ -1,19 +1,16 @@
-"use client"
-
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   Image,
-  FlatList,
   TouchableOpacity,
   ScrollView,
-} from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
-import { Ionicons, MaterialIcons } from "@expo/vector-icons"
-import { useRouter } from "expo-router"
-import { supabase } from "../lib/supabase" // Import Supabase client
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { supabase } from "../lib/supabase"; // Import Supabase client
 import AppHeader from "../components/AppHeader"; // Import AppHeader
 
 const upcomingEvents = [
@@ -35,7 +32,7 @@ const upcomingEvents = [
     attendees: 3,
     image: "https://via.placeholder.com/100x60.png?text=Movie",
   },
-]
+];
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -52,9 +49,11 @@ export default function HomeScreen() {
 
     fetchUser();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
-    });
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user || null);
+      }
+    );
 
     return () => {
       authListener?.subscription?.unsubscribe(); // Correctly call unsubscribe
@@ -219,4 +218,4 @@ const styles = StyleSheet.create({
   eventDate: { color: "#555", fontSize: 13, marginTop: 4 },
   eventLocation: { color: "#777", fontSize: 13 },
   eventPeople: { color: "#999", fontSize: 13, marginTop: 4 },
-})
+});

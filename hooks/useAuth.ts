@@ -11,19 +11,28 @@ export function useAuth() {
 
   useEffect(() => {
     // Get the current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        fetchUserAndProfile(session.user.id);
-      } else {
-        setLoading(false);
+    const fetchSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session && session.user) {
+        // Type cast session.user to User explicitly
+        const userData = session.user as User;
+        await fetchUserAndProfile(userData.id);
+        setUser(userData);  // Set user state
       }
-    });
+      setLoading(false);  // Set loading to false after session is fetched
+    };
 
-    // Listen for auth changes
+    fetchSession();
+
+    // Listen for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
-          fetchUserAndProfile(session.user.id);
+          // Type cast session.user to User explicitly
+          const userData = session.user as User;
+          await fetchUserAndProfile(userData.id);
+          setUser(userData);  // Set user on sign-in
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
           setProfile(null);
@@ -37,19 +46,22 @@ export function useAuth() {
   }, []);
 
   const fetchUserAndProfile = async (userId: string) => {
-    setLoading(true);
     try {
+      setLoading(true);
+
       // Get user data
-      const { data: userData } = await userController.getCurrentUser();
+      const { data: userData, error: userError } = await userController.getCurrentUser();
+      if (userError) throw userError;
       setUser(userData);
 
+      // Get profile data
       if (userData) {
-        // Get profile data
-        const { data: profileData } = await profileController.getProfileByUserId(userData.user_id);
+        const { data: profileData, error: profileError } = await profileController.getProfileByUserId(userData.user_id);
+        if (profileError) throw profileError;
         setProfile(profileData);
       }
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('Error fetching user or profile data:', error);
     } finally {
       setLoading(false);
     }

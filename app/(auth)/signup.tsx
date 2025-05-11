@@ -47,7 +47,7 @@ export default function SignupScreen() {
       }
 
       // Redirect to the main page after successful signup
-      router.push('/(tabs)/index');
+      router.push('/tabs/index');
     } catch (err) {
       console.error('Signup error:', err);
       setError('An unexpected error occurred. Please try again.');

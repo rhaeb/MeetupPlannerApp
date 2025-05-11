@@ -1,57 +1,51 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
-import { supabase } from './lib/supabase'; // Ensure correct import for supabase
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { useAuth } from '../hooks/useAuth';
 
 export default function RootLayout() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    // Check if the user is authenticated on initial load
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession(); // Use getSession instead of session()
-      setIsAuthenticated(!!session?.user);
-    };
-
-    checkAuth();
-
-    // Subscribe to auth state changes (login/logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_, session) => {
-        setIsAuthenticated(!!session?.user);
+    if (!loading) {
+      if (user) {
+        // Redirect to the main app if authenticated
+        router.replace('/tabs');
+      } else {
+        // Redirect to the login page if not authenticated
+        router.replace('/login');
       }
-    );
-
-    // Cleanup listener on unmount
-    return () => {
-      subscription.unsubscribe(); // Unsubscribe from the listener
-    };
-  }, []);
-
-  useEffect(() => {
-    // Redirect to the correct screen based on authentication status
-    if (isAuthenticated) {
-      router.replace('/(tabs)'); // Redirect to tabs if authenticated
-    } else {
-      router.replace('/login'); // Redirect to login if not authenticated
     }
-  }, [isAuthenticated, router]);
+  }, [user, loading, router]);
+
+  if (loading) {
+    // Show a loading indicator while checking authentication
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2E7D32" />
+      </View>
+    );
+  }
 
   return (
     <>
       <StatusBar style="auto" />
       <Stack screenOptions={{ headerShown: false }}>
-        {/* Conditionally render login or tabs based on authentication */}
-        {!isAuthenticated ? (
-          <Stack.Screen name="login" />
-        ) : (
-          <Stack.Screen name="tabs" />
-        )}
-        <Stack.Screen name="attendees/[eventId]" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="chats/[userId]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="tabs" />
+        <Stack.Screen name="login" />
       </Stack>
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+});

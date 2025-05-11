@@ -1,17 +1,13 @@
 "use client"
-
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native"
-import { useRouter } from "expo-router"
+import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
-import { useEffect, useState } from "react"
 import { SafeAreaView } from "react-native-safe-area-context"
 import AppHeader from "../../components/AppHeader"
 
 export default function EventsScreen() {
-  const router = useRouter()
-
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["right", "left", "bottom"]}>
       <AppHeader />
       <View style={styles.header}>
         <Text style={styles.title}>Events</Text>
@@ -119,7 +115,7 @@ const styles = StyleSheet.create({
     color: "#1e1e1e",
     marginBottom: 12,
   },
-eventCard: {
+  eventCard: {
     backgroundColor: "white",
     borderRadius: 8,
     padding: 16,

@@ -1,10 +1,14 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
-import { useRouter } from "expo-router";
-import { Bell, HelpCircle } from "lucide-react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { supabase } from "../lib/supabase";
-import { Profile } from "../../types";
+import React, { useEffect, useState } from 'react';
+import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { useFonts } from 'expo-font';
+import { Bell, HelpCircle } from 'lucide-react-native';
+import { router } from 'expo-router';
+import { supabase } from '../lib/supabase';
+import { Profile } from '../../types';
+import { notificationController } from '../../controllers/notificationController';
+import { profileController } from '../../controllers/profileController';
+import { userController } from '../../controllers/userController';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface AppHeaderProps {
   onNotificationPress?: () => void;
@@ -12,20 +16,17 @@ interface AppHeaderProps {
 }
 
 export default function AppHeader({ onNotificationPress, onProfilePress }: AppHeaderProps) {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [hasNotifications, setHasNotifications] = useState(false);
+  const [fontsLoaded] = useFonts({
+    'Allison': require('../../assets/fonts/Allison-Regular.ttf'),
+  });
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       const { data: session } = await supabase.auth.getSession();
       if (session?.session?.user) {
-        const { data } = await supabase
-          .from("profile")
-          .select("*")
-          .eq("user_id", session.session.user.id)
-          .single();
+        const { data } = await profileController.getProfileByUserId(session.session.user.id);
         if (data) {
           setProfile(data);
         }
@@ -35,11 +36,46 @@ export default function AppHeader({ onNotificationPress, onProfilePress }: AppHe
     fetchUserProfile();
   }, []);
 
+  useEffect(() => {
+    if (!profile) return;
+
+    const checkNotifications = async () => {
+      const { data } = await notificationController.getUserNotifications(profile.prof_id);
+      setHasNotifications(data !== null && data.length > 0);
+    };
+
+    const setupSubscription = async () => {
+      checkNotifications();
+
+      const channel = supabase
+        .channel(`notifications-${profile.prof_id}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notification',
+          filter: `prof_id=eq.${profile.prof_id}`
+        }, () => {
+          setHasNotifications(true);
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
+
+    const unsubscribePromise = setupSubscription();
+
+    return () => {
+      unsubscribePromise.then(unsub => unsub?.());
+    };
+  }, [profile]);
+
   const handleNotificationPress = () => {
     if (onNotificationPress) {
       onNotificationPress();
     } else {
-      router.push("/notifications");
+      router.push('/notifications');
     }
   };
 
@@ -47,13 +83,22 @@ export default function AppHeader({ onNotificationPress, onProfilePress }: AppHe
     if (onProfilePress) {
       onProfilePress();
     } else {
-      router.push("/profile");
+      router.push('/profile');
     }
   };
 
+  const handleLogout = async () => {
+    await userController.logout();
+    router.replace('/');
+  };
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
-    <View style={[styles.header, { paddingTop: insets.top }]}>
-      <TouchableOpacity onPress={() => router.push("/tabs")} style={styles.logoContainer}>
+    <View style={styles.header}>
+      <TouchableOpacity onPress={() => router.push('/tabs')} style={styles.logoContainer}>
         <Text style={styles.logo}>Tara</Text>
       </TouchableOpacity>
 
@@ -68,7 +113,7 @@ export default function AppHeader({ onNotificationPress, onProfilePress }: AppHe
             <Image
               source={{ uri: profile.photo }}
               style={styles.profileImage}
-              onError={() => setProfile((prev) => (prev ? { ...prev, photo: "" } : prev))}
+              onError={() => setProfile(prev => prev ? { ...prev, photo: '' } : prev)}
             />
           ) : (
             <View style={styles.profilePlaceholder}>
@@ -83,56 +128,60 @@ export default function AppHeader({ onNotificationPress, onProfilePress }: AppHe
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: '#eee',
+    height: 60,
+    width: '100%',
   },
   logoContainer: {
     flex: 1,
   },
   logo: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333",
+    fontFamily: 'Allison',
+    fontSize: 36,
+    color: '#0B5E42',
   },
   rightContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   iconContainer: {
     marginRight: 16,
+    position: 'relative',
   },
   notificationDot: {
-    position: "absolute",
-    top: -2,
-    right: -2,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "red",
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'red',
+    borderWidth: 1,
+    borderColor: '#fff',
   },
   profileContainer: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    overflow: "hidden",
-    justifyContent: "center",
-    alignItems: "center",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    overflow: 'hidden',
+    backgroundColor: '#0B5E42',
   },
   profileImage: {
-    width: "100%",
-    height: "100%",
+    width: '100%',
+    height: '100%',
   },
   profilePlaceholder: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#333",
-    justifyContent: "center",
-    alignItems: "center",
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#0B5E42',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

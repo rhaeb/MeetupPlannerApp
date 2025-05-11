@@ -22,8 +22,8 @@ export default function LoginScreen() {
       return;
     }
 
-    router.replace('/tabs/index');
-
+    // Wait for the session to update in useAuth
+    router.replace('/tabs');
   };
 
   return (
