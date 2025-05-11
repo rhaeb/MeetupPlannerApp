@@ -71,6 +71,38 @@ export const userController = {
     }
   },
 
+  // Reset password (send reset email)
+  async resetPassword(email: string): Promise<{ error: any; data: any }> {
+    try {
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'tara://reset-password-confirm',
+      });
+
+      if (error) throw error;
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Reset password error:', error);
+      return { data: null, error };
+    }
+  },
+
+  // Update password after reset
+  async updatePassword(newPassword: string): Promise<{ error: any }> {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) throw error;
+
+      return { error: null };
+    } catch (error) {
+      console.error('Update password error:', error);
+      return { error };
+    }
+  },
+
   // Get current user
   async getCurrentUser(): Promise<{ error: any; data: User | null }> {
     try {

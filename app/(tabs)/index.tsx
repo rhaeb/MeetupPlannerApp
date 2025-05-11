@@ -38,33 +38,33 @@ const upcomingEvents = [
 ]
 
 export default function HomeScreen() {
-  const router = useRouter()
-  const [user, setUser] = useState(null)
+  const router = useRouter();
+  const [user, setUser] = useState(null);
 
   // Fetch the user from Supabase
   useEffect(() => {
     const fetchUser = async () => {
-      const { data, error } = await supabase.auth.getUser()
-      if (data) {
-        setUser(data.user)
+      const { data, error } = await supabase.auth.getUser();
+      if (data?.user) {
+        setUser(data.user);
       }
-    }
-    fetchUser()
- // Correctly handle the auth state change listener
- const { data: authListener } = supabase.auth.onAuthStateChange((_, session) => {
-  setUser(session?.user || null)
-})
+    };
 
-// Return a cleanup function
-return () => {
-  authListener?.subscription.unsubscribe() // Correct access to subscription
-}
-  }, [])
+    fetchUser();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+
+    return () => {
+      authListener?.subscription?.unsubscribe(); // Correctly call unsubscribe
+    };
+  }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    setUser(null)
-  }
+    await supabase.auth.signOut();
+    setUser(null);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -140,12 +140,12 @@ return () => {
           <Text style={styles.sectionTitle}>Past Events</Text>
           <Text style={styles.seeAll}>See all</Text>
         </View>
-        <View style={[styles.eventCard, { backgroundColor: "#f3f3f3" }]} >
+        <View style={[styles.eventCard, { backgroundColor: "#f3f3f3" }]}>
           <Text style={{ color: "#999" }}>No past events yet.</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
-  )
+  );
 }
 
 const styles = StyleSheet.create({

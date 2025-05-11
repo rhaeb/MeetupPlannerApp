@@ -57,9 +57,11 @@ export default function LoginScreen() {
         </View>
       </View>
 
-      <TouchableOpacity>
-        <Text style={styles.forgotPassword}>Forgot Password?</Text>
-      </TouchableOpacity>
+      <Link href="/forgotPassword" asChild>
+        <TouchableOpacity>
+          <Text style={styles.forgotPassword}>Forgot Password?</Text>
+        </TouchableOpacity>
+      </Link>
 
       <TouchableOpacity style={styles.signInButton} onPress={handleLogin}>
         <Text style={styles.signInText}>Sign In</Text>
@@ -82,12 +84,12 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </View> */}
 
-      <Text style={styles.signUpText}>
-        Don't have an account?{' '}
-        <Link href="/signup">
+      <View style={{ flexDirection: 'row' }}>
+        <Text style={styles.signUpText}>Don't have an account? </Text>
+        <Link href="/signup" asChild>
           <Text style={styles.signUpLink}>Sign Up Now!</Text>
         </Link>
-      </Text>
+      </View>
     </View>
   );
 }

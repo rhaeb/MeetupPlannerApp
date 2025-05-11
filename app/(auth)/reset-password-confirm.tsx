@@ -1,27 +1,36 @@
 import { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { userController } from '../../controllers/userController';
 
-export default function ForgotPasswordScreen() {
-  const [email, setEmail] = useState('');
+export default function ResetPasswordConfirmScreen() {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleResetPassword = async () => {
-    if (!email) {
-      setError('Please enter your email address');
+  const handleUpdatePassword = async () => {
+    if (!password || !confirmPassword) {
+      setError('Please fill in all fields');
+      return;
+    }
+    
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
       return;
     }
     
     setLoading(true);
     setError('');
-    setSuccess('');
     
-    const { error } = await userController.resetPassword(email);
+    const { error } = await userController.updatePassword(password);
     
     setLoading(false);
     
@@ -30,44 +39,58 @@ export default function ForgotPasswordScreen() {
       return;
     }
     
-    setSuccess('Password reset instructions have been sent to your email');
+    Alert.alert(
+      'Success',
+      'Your password has been updated successfully',
+      [{ text: 'OK', onPress: () => router.replace('/login') }]
+    );
   };
 
   return (
     <View style={styles.container}>
       <Image source={require('../assets/logo.png')} style={styles.logo} />
       <Text style={styles.title}>Tara</Text>
-      <Text style={styles.subtitle}>Forgot Password</Text>
+      <Text style={styles.subtitle}>Reset Password</Text>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      {success ? <Text style={styles.successText}>{success}</Text> : null}
 
       <View style={styles.inputContainer}>
         <View style={styles.inputWrapper}>
-          <MaterialIcons name="email" size={20} color="black" style={styles.icon} />
+          <MaterialIcons name="lock" size={20} color="black" style={styles.icon} />
           <TextInput
             style={styles.input}
-            placeholder="Email"
+            placeholder="New Password"
             placeholderTextColor="#000"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+        </View>
+        
+        <View style={styles.inputWrapper}>
+          <MaterialIcons name="lock" size={20} color="black" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Confirm New Password"
+            placeholderTextColor="#000"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
           />
         </View>
       </View>
 
       <TouchableOpacity 
         style={styles.resetButton} 
-        onPress={handleResetPassword}
+        onPress={handleUpdatePassword}
         disabled={loading}
       >
         <Text style={styles.resetText}>
-          {loading ? 'Sending...' : 'Reset Password'}
+          {loading ? 'Updating...' : 'Update Password'}
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.back()}>
+      <TouchableOpacity onPress={() => router.replace('/login')}>
         <Text style={styles.backText}>Back to Login</Text>
       </TouchableOpacity>
     </View>
@@ -144,15 +167,5 @@ const styles = StyleSheet.create({
     color: 'red',
     marginBottom: 10,
     fontWeight: 'bold',
-  },
-  successText: {
-    color: '#004d40',
-    marginBottom: 10,
-    fontWeight: 'bold',
-    backgroundColor: '#a5d6a7',
-    padding: 10,
-    borderRadius: 5,
-    textAlign: 'center',
-    width: '100%',
   },
 });

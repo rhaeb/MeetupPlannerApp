@@ -1,8 +1,10 @@
 "use client"
 
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView } from "react-native"
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native"
 import { useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
+import { useEffect, useState } from "react"
+import { SafeAreaView } from "react-native-safe-area-context"
 import AppHeader from "../../components/AppHeader"
 
 export default function EventsScreen() {

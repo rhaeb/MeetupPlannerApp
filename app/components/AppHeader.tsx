@@ -1,84 +1,78 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, Image } from 'react-native';
-import { useFonts } from 'expo-font';
-import { Bell } from 'lucide-react-native';
-import { router, usePathname } from 'expo-router';
-import { supabase } from '../lib/supabase';
-import { Profile } from '../../types';
-import { notificationController } from '../../controllers/notificationController';
-import { profileController } from '../../controllers/profileController';
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
+import { useRouter } from "expo-router";
+import { Bell, HelpCircle } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { supabase } from "../lib/supabase";
+import { Profile } from "../../types";
 
 interface AppHeaderProps {
   onNotificationPress?: () => void;
   onProfilePress?: () => void;
 }
 
-export default function AppHeader({ onNotificationPress, onProfilePress, style }: AppHeaderProps & { style?: any }) {
+export default function AppHeader({ onNotificationPress, onProfilePress }: AppHeaderProps) {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [hasNotifications, setHasNotifications] = useState(false);
-  const pathname = usePathname();
-
-  const [fontsLoaded] = useFonts({
-    'Allison': require('../../assets/fonts/Allison-Regular.ttf'),
-  });
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       const { data: session } = await supabase.auth.getSession();
       if (session?.session?.user) {
-        const { data } = await profileController.getProfileByUserId(session.session.user.id);
+        const { data } = await supabase
+          .from("profile")
+          .select("*")
+          .eq("user_id", session.session.user.id)
+          .single();
         if (data) {
           setProfile(data);
         }
-      }
-
-    // Check for notifications
-    const checkNotifications = async () => {
-      if (profile) {
-        const { data } = await notificationController.getUserNotifications(profile.prof_id);
-        setHasNotifications(data !== null && data.length > 0);
-      }
-    };
-    };
-
-    // Check for notifications
-    const checkNotifications = async () => {
-      if (profile) {
-        const { data } = await notificationController.getUserNotifications(profile.prof_id);
-        setHasNotifications(data !== null && data.length > 0);
       }
     };
 
     fetchUserProfile();
   }, []);
 
-  if (!fontsLoaded) {
-    return null; // Don't render until font is loaded
-  }
+  const handleNotificationPress = () => {
+    if (onNotificationPress) {
+      onNotificationPress();
+    } else {
+      router.push("/notifications");
+    }
+  };
+
+  const handleProfilePress = () => {
+    if (onProfilePress) {
+      onProfilePress();
+    } else {
+      router.push("/profile");
+    }
+  };
 
   return (
-    <View style={[styles.header, { marginTop: Platform.OS === "ios" ? StatusBar.currentHeight || 20 : 0 }, style]}>
-      <TouchableOpacity style={styles.logoContainer}>
+    <View style={[styles.header, { paddingTop: insets.top }]}>
+      <TouchableOpacity onPress={() => router.push("/tabs")} style={styles.logoContainer}>
         <Text style={styles.logo}>Tara</Text>
       </TouchableOpacity>
-      
+
       <View style={styles.rightContainer}>
-        <TouchableOpacity onPress={onNotificationPress} style={styles.iconContainer}>
+        <TouchableOpacity onPress={handleNotificationPress} style={styles.iconContainer}>
           <Bell color="#333" size={24} />
           {hasNotifications && <View style={styles.notificationDot} />}
         </TouchableOpacity>
-        
-        <TouchableOpacity onPress={onProfilePress} style={styles.profileContainer}>
+
+        <TouchableOpacity onPress={handleProfilePress} style={styles.profileContainer}>
           {profile?.photo ? (
-            <Image 
-              source={{ uri: profile.photo }} 
-              style={styles.profileImage} 
+            <Image
+              source={{ uri: profile.photo }}
+              style={styles.profileImage}
+              onError={() => setProfile((prev) => (prev ? { ...prev, photo: "" } : prev))}
             />
           ) : (
             <View style={styles.profilePlaceholder}>
-              <Text style={styles.profilePlaceholderText}>
-                {profile?.name ? profile.name.charAt(0).toUpperCase() : '?'}
-              </Text>
+              <HelpCircle color="#fff" size={20} />
             </View>
           )}
         </TouchableOpacity>
@@ -97,15 +91,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
-    height: 60,
   },
   logoContainer: {
     flex: 1,
   },
   logo: {
-    fontFamily: 'Allison',
-    fontSize: 36,
-    color: '#0B5E42',
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
   },
   rightContainer: {
     flexDirection: "row",
@@ -113,39 +106,33 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     marginRight: 16,
-    position: 'relative',
   },
   notificationDot: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: 'red',
-    borderWidth: 1,
-    borderColor: '#fff',
+    position: "absolute",
+    top: -2,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "red",
   },
   profileContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    overflow: 'hidden',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
   },
   profileImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   profilePlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#0B5E42',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profilePlaceholderText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#333",
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
