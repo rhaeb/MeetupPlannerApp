@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons, MaterialIcons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
 import { supabase } from "../lib/supabase" // Import Supabase client
+import AppHeader from "../components/AppHeader"; // Import AppHeader
 
 const upcomingEvents = [
   {
@@ -67,6 +68,7 @@ return () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <AppHeader /> {/* Add AppHeader here */}
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Hangout</Text>

@@ -91,7 +91,7 @@ export const mainController = {
     try {
       // Search profiles
       const { data: profiles, error: profileError } = await supabase
-        .from('profile')
+        .from('profile') // Correct table name
         .select('*')
         .ilike('name', `%${query}%`)
         .limit(5);

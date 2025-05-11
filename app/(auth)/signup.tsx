@@ -19,7 +19,8 @@ export default function SignupScreen() {
     }
 
     try {
-      const { data, error: signupError } = await supabase.auth.signUp({
+      // Sign up the user
+      const { data: signupData, error: signupError } = await supabase.auth.signUp({
         email,
         password,
       });
@@ -29,25 +30,27 @@ export default function SignupScreen() {
         return;
       }
 
-      const user = data.user;
+      const user = signupData.user;
       if (!user) {
-        setError('No user returned after signup.');
+        setError('Signup failed. Please try again.');
         return;
       }
 
+      // Insert a profile for the new user
       const { error: profileError } = await supabase
-        .from('profiles')
+        .from('profile') // Ensure the table name is correct
         .insert([{ user_id: user.id, username }]);
 
       if (profileError) {
-        setError(profileError.message);
+        setError(`Profile creation failed: ${profileError.message}`);
         return;
       }
 
+      // Redirect to the main page after successful signup
       router.push('/(tabs)/index');
-
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      console.error('Signup error:', err);
+      setError('An unexpected error occurred. Please try again.');
     }
   };
 

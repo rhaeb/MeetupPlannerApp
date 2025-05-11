@@ -1,11 +1,12 @@
-"use client"
+"use client";
 
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, SafeAreaView } from "react-native"
-import { useRouter } from "expo-router"
-import { Ionicons } from "@expo/vector-icons"
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, SafeAreaView } from "react-native";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import AppHeader from "../../components/AppHeader";
 
 export default function MessagesScreen() {
-  const router = useRouter()
+  const router = useRouter();
 
   const messages = [
     {
@@ -43,7 +44,7 @@ export default function MessagesScreen() {
       time: "1d ago",
       unread: false,
     },
-  ]
+  ];
 
   const renderItem = ({ item }) => (
     <TouchableOpacity
@@ -73,12 +74,13 @@ export default function MessagesScreen() {
         </View>
       </View>
     </TouchableOpacity>
-  )
+  );
 
   return (
     <SafeAreaView style={styles.container}>
+      <AppHeader />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Messages</Text>
+        <Text style={styles.title}>Messages</Text>
         <TouchableOpacity>
           <Ionicons name="notifications-outline" size={24} color="#6b7280" />
         </TouchableOpacity>
@@ -91,7 +93,7 @@ export default function MessagesScreen() {
         contentContainerStyle={styles.listContent}
       />
     </SafeAreaView>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -101,17 +103,14 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-    backgroundColor: "white",
+    padding: 20,
+    alignItems: "center",
   },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: "Inter-SemiBold",
-    color: "#1e1e1e",
+  title: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#222",
   },
   listContent: {
     padding: 16,
@@ -145,12 +144,11 @@ const styles = StyleSheet.create({
   },
   messageName: {
     fontSize: 16,
-    fontFamily: "Inter-Medium",
+    fontWeight: "500",
     color: "#1e1e1e",
   },
   messageTime: {
     fontSize: 12,
-    fontFamily: "Inter-Regular",
     color: "#6b7280",
   },
   messagePreview: {
@@ -160,13 +158,12 @@ const styles = StyleSheet.create({
   },
   messageText: {
     fontSize: 14,
-    fontFamily: "Inter-Regular",
     color: "#6b7280",
     flex: 1,
     marginRight: 8,
   },
   unreadMessageText: {
-    fontFamily: "Inter-Medium",
+    fontWeight: "500",
     color: "#1e1e1e",
   },
   unreadDot: {
@@ -175,4 +172,4 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: "#059669",
   },
-})
+});

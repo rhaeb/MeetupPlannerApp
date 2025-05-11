@@ -3,20 +3,23 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView } from "react-native"
 import { useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
+import AppHeader from "../../components/AppHeader"
 
 export default function EventsScreen() {
   const router = useRouter()
 
   return (
     <SafeAreaView style={styles.container}>
+      <AppHeader />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Events</Text>
+        <Text style={styles.title}>Events</Text>
         <TouchableOpacity onPress={() => router.push("/create-event")}>
           <Ionicons name="add" size={24} color="#059669" />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scrollView}>
+        {/* Your Events */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Your Events</Text>
           {[
@@ -93,17 +96,14 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-    backgroundColor: "white",
+    padding: 20,
+    alignItems: "center",
   },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: "Inter-SemiBold",
-    color: "#1e1e1e",
+  title: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#222",
   },
   scrollView: {
     flex: 1,
@@ -113,11 +113,11 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontFamily: "Inter-Bold",
+    fontWeight: "700",
     color: "#1e1e1e",
     marginBottom: 12,
   },
-  eventCard: {
+eventCard: {
     backgroundColor: "white",
     borderRadius: 8,
     padding: 16,
@@ -136,12 +136,12 @@ const styles = StyleSheet.create({
   },
   eventTitle: {
     fontSize: 16,
-    fontFamily: "Inter-SemiBold",
+    fontWeight: "600",
     color: "#1e1e1e",
   },
   eventTime: {
     fontSize: 14,
-    fontFamily: "Inter-Regular",
+    fontWeight: "400",
     color: "#6b7280",
     marginTop: 2,
   },
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   },
   eventBadgeText: {
     fontSize: 12,
-    fontFamily: "Inter-Medium",
+    fontWeight: "500",
     color: "#059669",
   },
   attendeesContainer: {
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   },
   attendeesText: {
     fontSize: 12,
-    fontFamily: "Inter-Regular",
+    fontWeight: "400",
     color: "#6b7280",
   },
 })

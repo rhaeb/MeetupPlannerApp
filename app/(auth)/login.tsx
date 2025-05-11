@@ -64,7 +64,7 @@ export default function LoginScreen() {
       <TouchableOpacity style={styles.signInButton} onPress={handleLogin}>
         <Text style={styles.signInText}>Sign In</Text>
       </TouchableOpacity>
-
+{/* 
       <Text style={styles.orText}>or login with</Text>
 
       <View style={styles.socialContainer}>
@@ -80,7 +80,7 @@ export default function LoginScreen() {
             style={styles.socialImage}
           />
         </TouchableOpacity>
-      </View>
+      </View> */}
 
       <Text style={styles.signUpText}>
         Don't have an account?{' '}
