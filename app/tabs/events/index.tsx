@@ -1,14 +1,70 @@
-"use client"
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native"
-import { router } from "expo-router"
-import { Ionicons } from "@expo/vector-icons"
-import { SafeAreaView } from "react-native-safe-area-context"
-import AppHeader from "../../components/AppHeader"
+"use client";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../../hooks/useAuth"; // Use the useAuth hook
+import { Event } from "../../../types";
 
 export default function EventsScreen() {
+  const router = useRouter();
+  const { profile, loading: authLoading } = useAuth(); // Get the logged-in user's profile
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      if (!profile) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Fetch events for the logged-in user's profile
+        const { data: userEvents, error } = await supabase
+          .from("attend")
+          .select("event:event_id(*)")
+          .eq("prof_id", profile.prof_id)
+          .order("event.date_start", { ascending: true });
+
+        if (error) {
+          console.error("Error fetching events:", error);
+        } else {
+          // Extract events from the nested structure
+          const events = userEvents?.map((item) => item.event) || [];
+          setEvents(events);
+        }
+      } catch (error) {
+        console.error("Error fetching events:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!authLoading) {
+      fetchEvents();
+    }
+  }, [profile, authLoading]);
+
+  if (authLoading || loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#059669" />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={["right", "left", "bottom"]}>
-      {/* <AppHeader /> */}
       <View style={styles.header}>
         <Text style={styles.title}>Events</Text>
         <TouchableOpacity onPress={() => router.push("/create-event")}>
@@ -20,77 +76,46 @@ export default function EventsScreen() {
         {/* Your Events */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Your Events</Text>
-          {[
-            { title: "Beach Cleanup", date: "Saturday, 9:00 AM", attendees: 18, isHosting: true },
-            { title: "Hiking Trip", date: "Sunday, 7:30 AM", attendees: 12, isHosting: true },
-          ].map((event, index) => (
-            <TouchableOpacity
-              key={`your-${index}`}
-              style={styles.eventCard}
-              onPress={() => router.push("/event-detail")}
-            >
-              <View style={styles.eventCardHeader}>
-                <View>
-                  <Text style={styles.eventTitle}>{event.title}</Text>
-                  <Text style={styles.eventTime}>{event.date}</Text>
+          {events.length > 0 ? (
+            events.map((event, index) => (
+              <TouchableOpacity
+                key={`event-${index}`}
+                style={styles.eventCard}
+                onPress={() => router.push(`/events/${event.event_id}`)}
+              >
+                <View style={styles.eventCardHeader}>
+                  <View>
+                    <Text style={styles.eventTitle}>{event.name}</Text>
+                    <Text style={styles.eventTime}>{event.date_start}</Text>
+                  </View>
+                  <View style={styles.eventBadge}>
+                    <Text style={styles.eventBadgeText}>
+                      {event.hoster_id === profile.prof_id ? "Hosting" : "Attending"}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.eventBadge}>
-                  <Text style={styles.eventBadgeText}>{event.isHosting ? "Hosting" : "Going"}</Text>
-                </View>
-              </View>
-              <View style={styles.attendeesContainer}>
-                <View style={styles.avatarGroup}>
-                  {[1, 2, 3].map((avatar) => (
-                    <View key={`avatar-${avatar}`} style={styles.attendeeAvatar} />
-                  ))}
-                </View>
-                <Text style={styles.attendeesText}>+{event.attendees} going</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Upcoming Events</Text>
-          {[
-            { title: "Community Meetup", date: "Next Friday, 6:00 PM", attendees: 24, isHosting: false },
-            { title: "Charity Run", date: "Next Saturday, 8:00 AM", attendees: 42, isHosting: false },
-            { title: "Tech Workshop", date: "Next Sunday, 2:00 PM", attendees: 16, isHosting: false },
-          ].map((event, index) => (
-            <TouchableOpacity
-              key={`upcoming-${index}`}
-              style={styles.eventCard}
-              onPress={() => router.push("/event-detail")}
-            >
-              <View style={styles.eventCardHeader}>
-                <View>
-                  <Text style={styles.eventTitle}>{event.title}</Text>
-                  <Text style={styles.eventTime}>{event.date}</Text>
-                </View>
-                <View style={styles.eventBadge}>
-                  <Text style={styles.eventBadgeText}>{event.isHosting ? "Hosting" : "Going"}</Text>
-                </View>
-              </View>
-              <View style={styles.attendeesContainer}>
-                <View style={styles.avatarGroup}>
-                  {[1, 2, 3].map((avatar) => (
-                    <View key={`avatar-${avatar}`} style={styles.attendeeAvatar} />
-                  ))}
-                </View>
-                <Text style={styles.attendeesText}>+{event.attendees} going</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+                <Text style={styles.eventLocation}>{event.address}</Text>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <Text style={styles.noEventsText}>No events found.</Text>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fafafa",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
   },
   header: {
     flexDirection: "row",
@@ -154,26 +179,17 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#059669",
   },
-  attendeesContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  avatarGroup: {
-    flexDirection: "row",
-    marginRight: 8,
-  },
-  attendeeAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#e5e7eb",
-    borderWidth: 2,
-    borderColor: "white",
-    marginLeft: -8,
-  },
-  attendeesText: {
-    fontSize: 12,
+  eventLocation: {
+    fontSize: 14,
     fontWeight: "400",
     color: "#6b7280",
+    marginTop: 8,
   },
-})
+  noEventsText: {
+    fontSize: 14,
+    fontWeight: "400",
+    color: "#6b7280",
+    textAlign: "center",
+    marginTop: 20,
+  },
+});

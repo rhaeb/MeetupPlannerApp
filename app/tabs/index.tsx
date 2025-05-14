@@ -6,62 +6,65 @@ import {
   Image,
   TouchableOpacity,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { supabase } from "../lib/supabase"; // Import Supabase client
-
-const upcomingEvents = [
-  {
-    id: "1",
-    title: "Beach Party",
-    status: "Confirmed",
-    date: "August 10–15, 2025",
-    location: "Lapu-Lapu City, Cebu",
-    attendees: 4,
-    image: "https://via.placeholder.com/100x60.png?text=Beach",
-  },
-  {
-    id: "2",
-    title: "Movie Night",
-    status: "Planning",
-    date: "August 16, 2025",
-    location: "SM Cebu City",
-    attendees: 3,
-    image: "https://via.placeholder.com/100x60.png?text=Movie",
-  },
-];
+import { Event } from "../../types";
+import { useAuth } from "../../hooks/useAuth"; // Import useAuth hook
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [user, setUser] = useState(null);
+  const { user, profile, loading: authLoading } = useAuth(); // Use useAuth hook
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Fetch the user from Supabase
+  // Fetch events for the logged-in user
   useEffect(() => {
-    const fetchUser = async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (data?.user) {
-        setUser(data.user);
+    const fetchEvents = async () => {
+      if (!profile) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Fetch events for the logged-in user's profile
+        const { data: userEvents, error } = await supabase
+          .from("attend")
+          .select("event:event_id(*)")
+          .eq("prof_id", profile.prof_id)
+          .order("event.date_start", { ascending: true });
+
+        if (error) {
+          console.error("Error fetching events:", error);
+        } else {
+          // Extract events from the nested structure
+          const events = userEvents.map((item) => item.event);
+          setEvents(events);
+        }
+      } catch (error) {
+        console.error("Error fetching events:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchUser();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user || null);
-      }
-    );
-
-    return () => {
-      authListener?.subscription?.unsubscribe(); // Correctly call unsubscribe
-    };
-  }, []);
+    fetchEvents();
+  }, [profile]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setUser(null);
+    router.push("/login");
   };
+
+  if (authLoading || loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -103,42 +106,41 @@ export default function HomeScreen() {
           <Text style={styles.seeAll}>See all</Text>
         </View>
 
-        {upcomingEvents.map((event) => (
-          <TouchableOpacity
-            key={event.id}
-            style={styles.eventCard}
-            onPress={() => router.push(`/events/${event.id}`)}
-          >
-            <Image source={{ uri: event.image }} style={styles.eventImage} />
-            <View style={styles.eventContent}>
-              <View style={styles.eventRow}>
-                <Text style={styles.eventTitle}>{event.title}</Text>
-                <Text
-                  style={[
-                    styles.eventStatus,
-                    event.status === "Confirmed"
-                      ? styles.statusConfirmed
-                      : styles.statusPlanning,
-                  ]}
-                >
-                  {event.status}
-                </Text>
+        {events.length > 0 ? (
+          events.map((event) => (
+            <TouchableOpacity
+              key={event.event_id}
+              style={styles.eventCard}
+              onPress={() => router.push(`/events/${event.event_id}`)}
+            >
+              <Image
+                source={{
+                  uri: event.picture || "https://via.placeholder.com/100x60",
+                }}
+                style={styles.eventImage}
+              />
+              <View style={styles.eventContent}>
+                <View style={styles.eventRow}>
+                  <Text style={styles.eventTitle}>{event.name}</Text>
+                  <Text
+                    style={[
+                      styles.eventStatus,
+                      event.status === "planned"
+                        ? styles.statusPlanning
+                        : styles.statusConfirmed,
+                    ]}
+                  >
+                    {event.status}
+                  </Text>
+                </View>
+                <Text style={styles.eventDate}>{event.date_start}</Text>
+                <Text style={styles.eventLocation}>{event.address}</Text>
               </View>
-              <Text style={styles.eventDate}>{event.date}</Text>
-              <Text style={styles.eventLocation}>{event.location}</Text>
-              <Text style={styles.eventPeople}>{event.attendees} people</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-
-        {/* Past Events Placeholder */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Past Events</Text>
-          <Text style={styles.seeAll}>See all</Text>
-        </View>
-        <View style={[styles.eventCard, { backgroundColor: "#f3f3f3" }]}>
-          <Text style={{ color: "#999" }}>No past events yet.</Text>
-        </View>
+            </TouchableOpacity>
+          ))
+        ) : (
+          <Text style={styles.noEventsText}>No upcoming events found.</Text>
+        )}
       </ScrollView>
     </View>
   );
@@ -146,11 +148,17 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingVertical: 10, // Adjusted padding to reduce the gap
+    paddingVertical: 10,
     alignItems: "center",
   },
   title: { fontSize: 24, fontWeight: "700", color: "#222" },
@@ -215,5 +223,5 @@ const styles = StyleSheet.create({
   statusPlanning: { backgroundColor: "#fff3e0", color: "#ef6c00" },
   eventDate: { color: "#555", fontSize: 13, marginTop: 4 },
   eventLocation: { color: "#777", fontSize: 13 },
-  eventPeople: { color: "#999", fontSize: 13, marginTop: 4 },
+  noEventsText: { textAlign: "center", color: "#999", marginTop: 20 },
 });

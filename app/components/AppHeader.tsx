@@ -75,7 +75,7 @@ export default function AppHeader({ onNotificationPress, onProfilePress }: AppHe
     if (onNotificationPress) {
       onNotificationPress();
     } else {
-      router.push('/profile');
+      router.push('/tabs/profile');
     }
   };
 
@@ -83,7 +83,7 @@ export default function AppHeader({ onNotificationPress, onProfilePress }: AppHe
     if (onProfilePress) {
       onProfilePress();
     } else {
-      router.push('/profile');
+      router.push('/tabs/profile');
     }
   };
 

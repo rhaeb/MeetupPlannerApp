@@ -1,26 +1,45 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../app/lib/supabase';
-import { User, Profile } from '../types';
-import { userController } from '../controllers/userController';
-import { profileController } from '../controllers/profileController';
+import { Profile } from '../types';
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get the current session
     const fetchSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session && session.user) {
-        // Type cast session.user to User explicitly
-        const userData = session.user as User;
-        await fetchUserAndProfile(userData.id);
-        setUser(userData);  // Set user state
+      try {
+        setLoading(true);
+
+        // Get the current session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Error fetching session:', error);
+          return;
+        }
+
+        if (session && session.user) {
+          setUser(session.user);
+
+          // Fetch the profile using the user's ID
+          const { data: profileData, error: profileError } = await supabase
+            .from('profile')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
+
+          if (profileError) {
+            console.error('Error fetching profile:', profileError);
+          } else {
+            setProfile(profileData);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching session or profile:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);  // Set loading to false after session is fetched
     };
 
     fetchSession();
@@ -29,10 +48,20 @@ export function useAuth() {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
-          // Type cast session.user to User explicitly
-          const userData = session.user as User;
-          await fetchUserAndProfile(userData.id);
-          setUser(userData);  // Set user on sign-in
+          setUser(session.user);
+
+          // Fetch the profile again on sign-in
+          const { data: profileData, error: profileError } = await supabase
+            .from('profile')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
+
+          if (profileError) {
+            console.error('Error fetching profile:', profileError);
+          } else {
+            setProfile(profileData);
+          }
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
           setProfile(null);
@@ -45,23 +74,41 @@ export function useAuth() {
     };
   }, []);
 
-  const fetchUserAndProfile = async (userId: string) => {
+  const fetchUserAndProfile = async () => {
     try {
       setLoading(true);
 
-      // Get user data
-      const { data: userData, error: userError } = await userController.getCurrentUser();
-      if (userError) throw userError;
-      setUser(userData);
-
-      // Get profile data
-      if (userData) {
-        const { data: profileData, error: profileError } = await profileController.getProfileByUserId(userData.user_id);
-        if (profileError) throw profileError;
-        setProfile(profileData);
+      // Get the current session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error('Error fetching session:', sessionError);
+        throw sessionError;
       }
+
+      if (!session || !session.user) {
+        setUser(null);
+        setProfile(null);
+        return;
+      }
+
+      // Set the user
+      setUser(session.user);
+
+      // Fetch the profile using the user's ID
+      const { data: profileData, error: profileError } = await supabase
+        .from('profile')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        throw profileError;
+      }
+
+      setProfile(profileData);
     } catch (error) {
-      console.error('Error fetching user or profile data:', error);
+      console.error('Error fetching user or profile:', error);
     } finally {
       setLoading(false);
     }
