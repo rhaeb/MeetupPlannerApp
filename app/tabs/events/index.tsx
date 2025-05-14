@@ -8,7 +8,7 @@ import AppHeader from "../../components/AppHeader"
 export default function EventsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["right", "left", "bottom"]}>
-      <AppHeader />
+      {/* <AppHeader /> */}
       <View style={styles.header}>
         <Text style={styles.title}>Events</Text>
         <TouchableOpacity onPress={() => router.push("/create-event")}>

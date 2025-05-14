@@ -75,7 +75,7 @@ export default function AppHeader({ onNotificationPress, onProfilePress }: AppHe
     if (onNotificationPress) {
       onNotificationPress();
     } else {
-      router.push('/notifications');
+      router.push('/profile');
     }
   };
 

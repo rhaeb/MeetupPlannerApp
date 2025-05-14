@@ -7,11 +7,9 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { supabase } from "../lib/supabase"; // Import Supabase client
-import AppHeader from "../components/AppHeader"; // Import AppHeader
 
 const upcomingEvents = [
   {
@@ -66,8 +64,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <AppHeader /> {/* Add AppHeader here */}
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Hangout</Text>
@@ -143,7 +140,7 @@ export default function HomeScreen() {
           <Text style={{ color: "#999" }}>No past events yet.</Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -152,7 +149,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 10, // Adjusted padding to reduce the gap
     alignItems: "center",
   },
   title: { fontSize: 24, fontWeight: "700", color: "#222" },

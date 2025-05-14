@@ -6,7 +6,7 @@ import AppHeader from "../../components/AppHeader";
 export default function FriendsScreen() {
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader />
+      {/* <AppHeader /> */}
       <View style={styles.header}>
         <Text style={styles.title}>Friends</Text>
       </View>

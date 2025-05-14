@@ -78,7 +78,7 @@ export default function MessagesScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader />
+      {/* <AppHeader /> */}
       <View style={styles.header}>
         <Text style={styles.title}>Messages</Text>
         <TouchableOpacity>
