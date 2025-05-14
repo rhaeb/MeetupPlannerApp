@@ -106,15 +106,19 @@ export const eventController = {
     try {
       const { data, error } = await supabase
         .from('attend')
-        .select('event:event_id(*)')
-        .eq('prof_id', profId)
-        .eq('status', 'going')
-        .order('date_joined', { ascending: false });
+        .select(`
+          event:event_id (
+            *,
+            date_start
+          )
+        `)
+        .eq('prof_id', profId);
 
       if (error) throw error;
 
-      // Extract events from the nested structure
-      const events = data.map(item => item.event);
+      const events = data.map(item => item.event).sort((a, b) => {
+        return new Date(a.date_start).getTime() - new Date(b.date_start).getTime();
+      });
 
       return { data: events, error: null };
     } catch (error) {

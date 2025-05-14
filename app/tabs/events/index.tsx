@@ -11,13 +11,13 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../../hooks/useAuth"; // Use the useAuth hook
+import { useAuth } from "../../../hooks/useAuth";
 import { Event } from "../../../types";
+import { eventController } from "../../../controllers/eventController";
 
 export default function EventsScreen() {
   const router = useRouter();
-  const { profile, loading: authLoading } = useAuth(); // Get the logged-in user's profile
+  const { profile, loading: authLoading } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,26 +28,15 @@ export default function EventsScreen() {
         return;
       }
 
-      try {
-        // Fetch events for the logged-in user's profile
-        const { data: userEvents, error } = await supabase
-          .from("attend")
-          .select("event:event_id(*)")
-          .eq("prof_id", profile.prof_id)
-          .order("event.date_start", { ascending: true });
+      const { data, error } = await eventController.getAttendingEvents(profile.prof_id);
 
-        if (error) {
-          console.error("Error fetching events:", error);
-        } else {
-          // Extract events from the nested structure
-          const events = userEvents?.map((item) => item.event) || [];
-          setEvents(events);
-        }
-      } catch (error) {
+      if (error) {
         console.error("Error fetching events:", error);
-      } finally {
-        setLoading(false);
+      } else {
+        setEvents(data || []);
       }
+
+      setLoading(false);
     };
 
     if (!authLoading) {
@@ -73,13 +62,12 @@ export default function EventsScreen() {
       </View>
 
       <ScrollView style={styles.scrollView}>
-        {/* Your Events */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Your Events</Text>
           {events.length > 0 ? (
-            events.map((event, index) => (
+            events.map((event) => (
               <TouchableOpacity
-                key={`event-${index}`}
+                key={event.event_id}
                 style={styles.eventCard}
                 onPress={() => router.push(`/events/${event.event_id}`)}
               >
@@ -90,7 +78,7 @@ export default function EventsScreen() {
                   </View>
                   <View style={styles.eventBadge}>
                     <Text style={styles.eventBadgeText}>
-                      {event.hoster_id === profile.prof_id ? "Hosting" : "Attending"}
+                      {event.hoster_id === profile?.prof_id ? "Hosting" : "Attending"}
                     </Text>
                   </View>
                 </View>
@@ -107,10 +95,7 @@ export default function EventsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fafafa",
-  },
+  container: { flex: 1, backgroundColor: "#fafafa" },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -123,17 +108,9 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: "center",
   },
-  title: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#222",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  section: {
-    padding: 16,
-  },
+  title: { fontSize: 24, fontWeight: "700", color: "#222" },
+  scrollView: { flex: 1 },
+  section: { padding: 16 },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
@@ -157,34 +134,16 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: 12,
   },
-  eventTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1e1e1e",
-  },
-  eventTime: {
-    fontSize: 14,
-    fontWeight: "400",
-    color: "#6b7280",
-    marginTop: 2,
-  },
+  eventTitle: { fontSize: 16, fontWeight: "600", color: "#1e1e1e" },
+  eventTime: { fontSize: 14, color: "#6b7280", marginTop: 2 },
   eventBadge: {
     backgroundColor: "#d1fae5",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
   },
-  eventBadgeText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "#059669",
-  },
-  eventLocation: {
-    fontSize: 14,
-    fontWeight: "400",
-    color: "#6b7280",
-    marginTop: 8,
-  },
+  eventBadgeText: { fontSize: 12, fontWeight: "500", color: "#059669" },
+  eventLocation: { fontSize: 14, color: "#6b7280", marginTop: 8 },
   noEventsText: {
     fontSize: 14,
     fontWeight: "400",

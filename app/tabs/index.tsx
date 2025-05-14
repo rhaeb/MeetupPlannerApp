@@ -16,7 +16,7 @@ import { useAuth } from "../../hooks/useAuth"; // Import useAuth hook
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user, profile, loading: authLoading } = useAuth(); // Use useAuth hook
+  const { profile, loading: authLoading } = useAuth(); // Use useAuth hook
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,16 +32,35 @@ export default function HomeScreen() {
         // Fetch events for the logged-in user's profile
         const { data: userEvents, error } = await supabase
           .from("attend")
-          .select("event:event_id(*)")
-          .eq("prof_id", profile.prof_id)
-          .order("event.date_start", { ascending: true });
+          .select(`
+            event:event_id (
+              event_id,
+              name,
+              description,
+              date_start,
+              date_end,
+              time,
+              address,
+              picture,
+              status,
+              rating,
+              hoster_id
+            )
+          `)
+          .eq("prof_id", profile.prof_id);
 
         if (error) {
           console.error("Error fetching events:", error);
-        } else {
-          // Extract events from the nested structure
-          const events = userEvents.map((item) => item.event);
-          setEvents(events);
+        } else if (userEvents) {
+          // Sort the events manually by date_start
+          const sortedEvents = userEvents
+            .map((item) => item.event)
+            .sort(
+              (a, b) =>
+                new Date(a.date_start).getTime() -
+                new Date(b.date_start).getTime()
+            );
+          setEvents(sortedEvents);
         }
       } catch (error) {
         console.error("Error fetching events:", error);
@@ -50,8 +69,10 @@ export default function HomeScreen() {
       }
     };
 
-    fetchEvents();
-  }, [profile]);
+    if (!authLoading) {
+      fetchEvents();
+    }
+  }, [profile, authLoading]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -71,7 +92,7 @@ export default function HomeScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Hangout</Text>
-        {user ? (
+        {profile ? (
           <TouchableOpacity style={styles.newEventBtn} onPress={handleLogout}>
             <Text style={styles.newEventText}>Log out</Text>
           </TouchableOpacity>
@@ -89,11 +110,20 @@ export default function HomeScreen() {
 
       {/* Quick Actions */}
       <View style={styles.quickActions}>
-        <TouchableOpacity style={styles.quickAction}>
+        {/* Navigate to All Events */}
+        <TouchableOpacity
+          style={styles.quickAction}
+          onPress={() => router.push("/tabs/events")}
+        >
           <Ionicons name="calendar-outline" size={30} color="#4CAF50" />
           <Text style={styles.quickActionText}>All Events</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.quickAction}>
+
+        {/* Navigate to All Friends */}
+        <TouchableOpacity
+          style={styles.quickAction}
+          onPress={() => router.push("/tabs/friends")}
+        >
           <Ionicons name="people-outline" size={30} color="#4CAF50" />
           <Text style={styles.quickActionText}>All Friends</Text>
         </TouchableOpacity>
@@ -103,7 +133,9 @@ export default function HomeScreen() {
         {/* Upcoming Events */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Upcoming Events</Text>
-          <Text style={styles.seeAll}>See all</Text>
+          <Text style={styles.seeAll} onPress={() => router.push("/events")}>
+            See all
+          </Text>
         </View>
 
         {events.length > 0 ? (
