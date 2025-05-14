@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffffa0',
+    backgroundColor: '#f7fcf9',
     borderRadius: 25,
     paddingHorizontal: 15,
     marginBottom: 15,

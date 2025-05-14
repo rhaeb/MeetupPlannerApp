@@ -10,6 +10,7 @@ export interface User {
   // Profile types
   export interface Profile {
     prof_id: string;
+    username: string;
     name: string;
     address: string | null;
     photo: string | null;
