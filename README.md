@@ -18,18 +18,27 @@ cd MeetupPlannerApp
 ```
 ## 2. Install the Dependencies 
 
+```sh
 npm install or
 npx expo install
 
+```
+
 ## 3. Set Up Supabase
 
+```sh
 cd app/lib/supabase.js
 update connection
 
+```
 
 ## 4. start expo app
 
+```sh
 npx expo start
+
+```
 
 ## NOTE:
 # use sdk 52
+
