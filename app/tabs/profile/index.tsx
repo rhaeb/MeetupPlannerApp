@@ -13,6 +13,7 @@ import { useRouter } from "expo-router";
 import { Ionicons, MaterialIcons, Feather } from "@expo/vector-icons";
 import { useAuth } from "../../../hooks/useAuth";
 import { userController } from "../../../controllers/userController";
+import { notificationController } from "../../../controllers/notificationController";
 import AppHeader from "../../components/AppHeader";
 
 export default function ProfileScreen() {
@@ -24,29 +25,41 @@ export default function ProfileScreen() {
     hosted: 5
   });
   
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      count: 6,
-      source: "Beach Party",
-      message: "JLL: Don't forget the",
-      date: "4/19/2025"
-    },
-    {
-      id: 2,
-      count: 1,
-      source: "Concert",
-      message: "Cedrick Kier: I'll bring",
-      date: "4/19/2025"
-    },
-    {
-      id: 3,
-      count: 10,
-      source: "JLL",
-      message: "(olololo)",
-      date: "4/19/2025"
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
+
+  useEffect(() => {
+    if (profile) {
+      fetchNotifications();
     }
-  ]);
+  }, [profile]);
+
+  const fetchNotifications = async () => {
+    if (!profile) return;
+    
+    setNotificationsLoading(true);
+    const { data, error } = await notificationController.getUserNotifications(profile.prof_id);
+    
+    if (!error && data) {
+      setNotifications(data.slice(0, 3)); // Only show first 3 notifications
+    } else {
+      console.error("Error fetching notifications:", error);
+    }
+    
+    setNotificationsLoading(false);
+  };
+
+  const handleEditProfile = () => {
+    if (profile) {
+      router.push(`/profile/edit/${profile.prof_id}`);
+    }
+  };
+
+  const handleSettings = () => {
+    if (profile) {
+      router.push(`/profile/settings/${profile.prof_id}`);
+    }
+  };
 
   const handleLogout = async () => {
     await userController.logout();
@@ -70,7 +83,7 @@ export default function ProfileScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profile</Text>
         <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity style={styles.iconButton} onPress={handleSettings}>
             <Ionicons name="settings-outline" size={24} color="#333" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton} onPress={handleLogout}>
@@ -111,7 +124,7 @@ export default function ProfileScreen() {
             </Text>
           </View>
           
-          <TouchableOpacity style={styles.editButton}>
+          <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
             <Feather name="edit-2" size={16} color="#fff" />
             <Text style={styles.editButtonText}>Edit Profile</Text>
           </TouchableOpacity>
@@ -144,20 +157,33 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.notificationsSection}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="notifications-outline" size={20} color="#0B5E42" />
-            <Text style={styles.sectionTitle}>Notifications</Text>
+          <View style={styles.sectionHeaderWithAction}>
+            <View style={styles.sectionTitleContainer}>
+              <Ionicons name="notifications-outline" size={20} color="#0B5E42" />
+              <Text style={styles.sectionTitle}>Notifications</Text>
+            </View>
+            <TouchableOpacity onPress={() => router.push('/notifications')}>
+              <Text style={styles.seeAllText}>See all</Text>
+            </TouchableOpacity>
           </View>
           
-          {notifications.map(notification => (
-            <View key={notification.id} style={styles.notificationItem}>
-              <Text style={styles.notificationTitle}>
-                {notification.count} New messages from {notification.source}
-              </Text>
-              <Text style={styles.notificationMessage}>{notification.message}</Text>
-              <Text style={styles.notificationDate}>{notification.date}</Text>
-            </View>
-          ))}
+          {notificationsLoading ? (
+            <ActivityIndicator size="small" color="#0B5E42" style={styles.notificationLoader} />
+          ) : notifications.length > 0 ? (
+            notifications.map((notification, index) => (
+              <View key={notification.notif_id || index} style={styles.notificationItem}>
+                <Text style={styles.notificationTitle}>
+                  {notification.title || `${notification.count || 'New'} messages from ${notification.source || 'event'}`}
+                </Text>
+                <Text style={styles.notificationMessage}>{notification.content || notification.message}</Text>
+                <Text style={styles.notificationDate}>
+                  {new Date(notification.date).toLocaleDateString() || notification.date}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noNotificationsText}>No notifications</Text>
+          )}
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -315,16 +341,29 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16
   },
-  sectionHeader: {
+  sectionHeaderWithAction: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16
+  },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: "#222",
     marginLeft: 8
+  },
+  seeAllText: {
+    color: '#0B5E42',
+    fontWeight: '600',
+    fontSize: 14
+  },
+  notificationLoader: {
+    marginVertical: 20
   },
   notificationItem: {
     backgroundColor: '#f0f9f4',
@@ -346,6 +385,12 @@ const styles = StyleSheet.create({
   notificationDate: {
     fontSize: 12,
     color: "#999"
+  },
+  noNotificationsText: {
+    textAlign: 'center',
+    color: '#999',
+    fontStyle: 'italic',
+    padding: 20
   },
   logoutButton: {
     borderWidth: 1,
