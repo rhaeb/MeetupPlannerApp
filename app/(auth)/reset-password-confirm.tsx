@@ -1,48 +1,54 @@
 import { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { userController } from '../../controllers/userController';
 
 export default function ResetPasswordConfirmScreen() {
-  const [password, setPassword] = useState('');
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const email = typeof params.email === 'string' ? params.email : '';
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   const handleUpdatePassword = async () => {
-    if (!password || !confirmPassword) {
+    if (!oldPassword || !newPassword || !confirmPassword) {
       setError('Please fill in all fields');
       return;
     }
-    
-    if (password !== confirmPassword) {
+    if (newPassword !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
-    
-    if (password.length < 6) {
+    if (newPassword.length < 6) {
       setError('Password must be at least 6 characters');
       return;
     }
-    
     setLoading(true);
     setError('');
-    
-    const { error } = await userController.updatePassword(password);
-    
-    setLoading(false);
-    
-    if (error) {
-      setError(error.message);
+
+    // Re-authenticate
+    const { error: loginError } = await userController.login(email, oldPassword);
+    if (loginError) {
+      setLoading(false);
+      setError('Current password is incorrect');
       return;
     }
-    
+
+    // Update password
+    const { error: updateError } = await userController.updatePassword(newPassword);
+    setLoading(false);
+    if (updateError) {
+      setError(updateError.message || 'Failed to update password');
+      return;
+    }
+
     Alert.alert(
       'Success',
-      'Your password has been updated successfully',
-      [{ text: 'OK', onPress: () => router.replace('/login') }]
+      'Your password has been updated successfully'
     );
   };
 
@@ -56,19 +62,39 @@ export default function ResetPasswordConfirmScreen() {
 
       <View style={styles.inputContainer}>
         <View style={styles.inputWrapper}>
+          <MaterialIcons name="email" size={20} color="black" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor="#000"
+            value={email}
+            editable={false}
+          />
+        </View>
+        <View style={styles.inputWrapper}>
           <MaterialIcons name="lock" size={20} color="black" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Current Password"
+            placeholderTextColor="#000"
+            value={oldPassword}
+            onChangeText={setOldPassword}
+            secureTextEntry
+          />
+        </View>
+        <View style={styles.inputWrapper}>
+          <MaterialIcons name="lock-outline" size={20} color="black" style={styles.icon} />
           <TextInput
             style={styles.input}
             placeholder="New Password"
             placeholderTextColor="#000"
-            value={password}
-            onChangeText={setPassword}
+            value={newPassword}
+            onChangeText={setNewPassword}
             secureTextEntry
           />
         </View>
-        
         <View style={styles.inputWrapper}>
-          <MaterialIcons name="lock" size={20} color="black" style={styles.icon} />
+          <MaterialIcons name="lock-outline" size={20} color="black" style={styles.icon} />
           <TextInput
             style={styles.input}
             placeholder="Confirm New Password"

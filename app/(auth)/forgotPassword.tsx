@@ -1,36 +1,21 @@
 import { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { userController } from '../../controllers/userController';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleResetPassword = async () => {
+  const handleContinue = () => {
     if (!email) {
       setError('Please enter your email address');
       return;
     }
-    
-    setLoading(true);
     setError('');
-    setSuccess('');
-    
-    const { error } = await userController.resetPassword(email);
-    
-    setLoading(false);
-    
-    if (error) {
-      setError(error.message);
-      return;
-    }
-    
-    setSuccess('Password reset instructions have been sent to your email');
+    // Navigate to reset password page, passing email as param
+    router.push({ pathname: '/(auth)/reset-password-confirm', params: { email } });
   };
 
   return (
@@ -40,7 +25,6 @@ export default function ForgotPasswordScreen() {
       <Text style={styles.subtitle}>Forgot Password</Text>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      {success ? <Text style={styles.successText}>{success}</Text> : null}
 
       <View style={styles.inputContainer}>
         <View style={styles.inputWrapper}>
@@ -59,12 +43,9 @@ export default function ForgotPasswordScreen() {
 
       <TouchableOpacity 
         style={styles.resetButton} 
-        onPress={handleResetPassword}
-        disabled={loading}
+        onPress={handleContinue}
       >
-        <Text style={styles.resetText}>
-          {loading ? 'Sending...' : 'Reset Password'}
-        </Text>
+        <Text style={styles.resetText}>Continue</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => router.back()}>

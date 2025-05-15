@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
 import { ProfileProvider } from './ProfileContext'; 
@@ -9,18 +9,23 @@ import { ProfileProvider } from './ProfileContext';
 export default function RootLayout() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!loading) {
-      if (user) {
-        // Redirect to the main app if authenticated
+      // Only redirect to /tabs if NOT on an auth page
+      const isAuthPage =
+        pathname === '/login' ||
+        pathname === '/forgotPassword' ||
+        pathname === '/reset-password-confirm';
+
+      if (user && !isAuthPage) {
         router.replace('/tabs');
-      } else {
-        // Redirect to the login page if not authenticated
+      } else if (!user && !isAuthPage) {
         router.replace('/login');
       }
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, pathname]);
 
   if (loading) {
     // Show a loading indicator while checking authentication

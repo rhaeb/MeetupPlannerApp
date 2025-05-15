@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { profileController } from "../../../controllers/profileController";
 import { userController } from "../../../controllers/userController";
+import { supabase } from '../../../app/lib/supabase';
 import { Profile } from "../../../types";
 
 export default function SettingsScreen() {
@@ -23,7 +24,10 @@ export default function SettingsScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  
+
+  // Auth email state
+  const [userEmail, setUserEmail] = useState<string>("");
+
   // Password form state
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -33,17 +37,17 @@ export default function SettingsScreen() {
   useEffect(() => {
     const fetchProfile = async () => {
       if (!id) return;
-      
+
       try {
         setLoading(true);
         const { data, error } = await profileController.getProfileById(id as string);
-        
+
         if (error) {
           console.error("Error fetching profile:", error);
           Alert.alert("Error", "Failed to load profile information");
           return;
         }
-        
+
         if (data) {
           setProfile(data);
         }
@@ -58,60 +62,63 @@ export default function SettingsScreen() {
     fetchProfile();
   }, [id]);
 
+  // Fetch the authenticated user's email from Supabase Auth
+  useEffect(() => {
+    const fetchUserEmail = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (data?.user?.email) {
+        setUserEmail(data.user.email);
+      }
+    };
+    fetchUserEmail();
+  }, []);
+
   const handleChangePassword = async () => {
-    // Reset error
     setPasswordError("");
-    
+
     // Validate inputs
     if (!oldPassword) {
       setPasswordError("Please enter your current password");
       return;
     }
-    
     if (!newPassword) {
       setPasswordError("Please enter a new password");
       return;
     }
-    
     if (newPassword.length < 6) {
       setPasswordError("Password must be at least 6 characters");
       return;
     }
-    
     if (newPassword !== confirmPassword) {
       setPasswordError("Passwords do not match");
       return;
     }
-    
+
     try {
       setSaving(true);
-      
-      // First verify old password by trying to login
-      const { error: loginError } = await userController.login(profile?.email || "", oldPassword);
-      
+
+      // Use the authenticated user's email for login
+      const { error: loginError } = await userController.login(userEmail, oldPassword);
+
       if (loginError) {
         setPasswordError("Current password is incorrect");
         setSaving(false);
         return;
       }
-      
+
       // Update password
       const { error: updateError } = await userController.updatePassword(newPassword);
-      
+
       if (updateError) {
         setPasswordError("Failed to update password. Please try again.");
         setSaving(false);
         return;
       }
-      
-      // Success
+
       Alert.alert("Success", "Password updated successfully");
-      
-      // Clear form
       setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      
     } catch (error) {
       console.error("Error changing password:", error);
       setPasswordError("An unexpected error occurred");
@@ -123,38 +130,6 @@ export default function SettingsScreen() {
   const handleLogout = async () => {
     await userController.logout();
     router.replace("/");
-  };
-
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      "Delete Account",
-      "Are you sure you want to delete your account? This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: async () => {
-            if (profile?.user_id) {
-              try {
-                const { error } = await userController.deleteUser(profile.user_id);
-                
-                if (error) {
-                  Alert.alert("Error", "Failed to delete account. Please try again.");
-                  return;
-                }
-                
-                await userController.logout();
-                router.replace("/");
-              } catch (error) {
-                console.error("Error deleting account:", error);
-                Alert.alert("Error", "An unexpected error occurred");
-              }
-            }
-          }
-        }
-      ]
-    );
   };
 
   if (loading) {
@@ -270,10 +245,6 @@ export default function SettingsScreen() {
         <View style={styles.actionSection}>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Text style={styles.logoutButtonText}>Log Out</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.deleteAccountButton} onPress={handleDeleteAccount}>
-            <Text style={styles.deleteAccountButtonText}>Delete Account</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -420,24 +391,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     alignItems: "center",
     marginBottom: 16,
-    width: "50%",
+    width: "100%",
   },
   logoutButtonText: {
     color: "#333",
     fontSize: 16,
     fontWeight: "500",
-  },
-  deleteAccountButton: {
-    backgroundColor: "#ff4d4f",
-    borderRadius: 4,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    alignItems: "center",
-    width: "100%",
-  },
-  deleteAccountButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
   },
 });
