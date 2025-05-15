@@ -20,14 +20,14 @@ import { userController } from "../../../controllers/userController";
 import { Profile } from "../../../types";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from '../../../app/lib/supabase';
+import { useProfile } from "../../ProfileContext";
 
 export default function EditProfileScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { profile,loading } = useProfile();
   const [saving, setSaving] = useState(false);
-  
+
   // Form state
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -35,53 +35,50 @@ export default function EditProfileScreen() {
   const [photo, setPhoto] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (!id) return;
-      
-      try {
-        setLoading(true);
-        // Get profile data by ID
-        const { data: profileData, error: profileError } = await profileController.getProfileById(id as string);
-        if (profileError) throw profileError;
+    if (!id || !profile) return;
 
-        // Get user data (for email)
-        const { data: userData, error: userError } = await userController.getCurrentUser();
-        if (userError) throw userError;
-        
-        if (profileData && userData) {
-          setProfile(profileData);
-          setName(profileData.name || "");
-          setUsername(profileData.username || "");
-          setAddress(profileData.address || "");
-          setPhoto(profileData.photo || null);
+    // Initialize form state from profile if IDs match
+    if (profile.prof_id === id) {
+      setName(profile.name || "");
+      setUsername(profile.username || "");
+      setAddress(profile.address || "");
+      setPhoto(profile.photo || null);
+    } else {
+      // Optionally fetch by ID if editing another profile
+      (async () => {
+        try {
+          const { data: profileData, error: profileError } = await profileController.getProfileById(id as string);
+          if (profileError) throw profileError;
+          if (profileData) {
+            setName(profileData.name || "");
+            setUsername(profileData.username || "");
+            setAddress(profileData.address || "");
+            setPhoto(profileData.photo || null);
+          }
+        } catch (error) {
+          console.error("Error in fetchProfile:", error);
+          Alert.alert("Error", "An unexpected error occurred");
         }
-      } catch (error) {
-        console.error("Error in fetchProfile:", error);
-        Alert.alert("Error", "An unexpected error occurred");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [id]);
+      })();
+    }
+  }, [id, profile]);
 
   const handlePickImage = async () => {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+
       if (!permissionResult.granted) {
         Alert.alert("Permission Required", "You need to grant permission to access your photos");
         return;
       }
-      
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
       });
-      
+
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setPhoto(result.assets[0].uri);
       }
@@ -164,7 +161,7 @@ export default function EditProfileScreen() {
         <Text style={styles.headerTitle}>Edit Profile</Text>
         <View style={{ width: 24 }} />
       </View>
-      
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
@@ -188,7 +185,7 @@ export default function EditProfileScreen() {
                 <MaterialIcons name="photo-camera" size={20} color="#fff" />
               </TouchableOpacity>
             </View>
-            
+
             <Text style={styles.profileName}>{name || "User"}</Text>
             <Text style={styles.username}>@{username || "username"}</Text>
             <View style={styles.locationContainer}>
@@ -196,7 +193,7 @@ export default function EditProfileScreen() {
               <Text style={styles.locationText}>{address || "Location"}</Text>
             </View>
           </View>
-          
+
           <View style={styles.formSection}>
             <View style={styles.formGroup}>
               <Text style={styles.label}>Full Name</Text>
@@ -207,7 +204,7 @@ export default function EditProfileScreen() {
                 placeholder="Enter your full name"
               />
             </View>
-            
+
             <View style={styles.formGroup}>
               <Text style={styles.label}>Username</Text>
               <TextInput
@@ -218,7 +215,7 @@ export default function EditProfileScreen() {
                 autoCapitalize="none"
               />
             </View>
-            
+
             <View style={styles.formGroup}>
               <Text style={styles.label}>Address:</Text>
               <TextInput
@@ -229,9 +226,9 @@ export default function EditProfileScreen() {
               />
             </View>
           </View>
-          
-          <TouchableOpacity 
-            style={styles.saveButton} 
+
+          <TouchableOpacity
+            style={styles.saveButton}
             onPress={handleSave}
             disabled={saving}
           >
@@ -239,7 +236,7 @@ export default function EditProfileScreen() {
               {saving ? "Saving..." : "Save"}
             </Text>
           </TouchableOpacity>
-          
+
           {/* Add some space at the bottom */}
           <View style={{ height: 40 }} />
         </ScrollView>

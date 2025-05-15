@@ -15,9 +15,11 @@ import { useAuth } from "../../../hooks/useAuth";
 import { userController } from "../../../controllers/userController";
 import { notificationController } from "../../../controllers/notificationController";
 import AppHeader from "../../components/AppHeader";
+import { useProfile } from "../../ProfileContext"; // Adjust path
 
 export default function ProfileScreen() {
-  const { user, profile, loading } = useAuth();
+  const { user } = useAuth();
+  const { profile, loading } = useProfile();
   const router = useRouter();
   const [stats, setStats] = useState({
     attended: 8,
@@ -27,6 +29,8 @@ export default function ProfileScreen() {
   
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(true);
+
+  console.log("Profile:", profile);
 
   useEffect(() => {
     if (profile) {

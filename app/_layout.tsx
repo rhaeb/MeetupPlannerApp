@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
+import { ProfileProvider } from './ProfileContext'; 
 
 export default function RootLayout() {
   const { user, loading } = useAuth();
@@ -32,11 +33,13 @@ export default function RootLayout() {
 
   return (
     <>
-      <StatusBar style="auto" />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="tabs" />
-        <Stack.Screen name="login" />
-      </Stack>
+      <ProfileProvider>
+        <StatusBar style="auto" />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="tabs" />
+          <Stack.Screen name="login" />
+        </Stack>
+      </ProfileProvider>
     </>
   );
 }

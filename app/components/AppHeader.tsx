@@ -4,11 +4,9 @@ import { useFonts } from 'expo-font';
 import { Bell, HelpCircle } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
-import { Profile } from '../../types';
 import { notificationController } from '../../controllers/notificationController';
-import { profileController } from '../../controllers/profileController';
 import { userController } from '../../controllers/userController';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useProfile } from "../ProfileContext";
 
 interface AppHeaderProps {
   onNotificationPress?: () => void;
@@ -16,25 +14,12 @@ interface AppHeaderProps {
 }
 
 export default function AppHeader({ onNotificationPress, onProfilePress }: AppHeaderProps) {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { profile } = useProfile(); // Use profile from context
   const [hasNotifications, setHasNotifications] = useState(false);
   const [fontsLoaded] = useFonts({
     'Allison': require('../../assets/fonts/Allison-Regular.ttf'),
   });
-
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      const { data: session } = await supabase.auth.getSession();
-      if (session?.session?.user) {
-        const { data } = await profileController.getProfileByUserId(session.session.user.id);
-        if (data) {
-          setProfile(data);
-        }
-      }
-    };
-
-    fetchUserProfile();
-  }, []);
+  console.log(profile);
 
   useEffect(() => {
     if (!profile) return;
@@ -95,6 +80,7 @@ export default function AppHeader({ onNotificationPress, onProfilePress }: AppHe
   if (!fontsLoaded) {
     return null;
   }
+  
 
   return (
     <View style={styles.header}>
@@ -113,7 +99,8 @@ export default function AppHeader({ onNotificationPress, onProfilePress }: AppHe
             <Image
               source={{ uri: profile.photo }}
               style={styles.profileImage}
-              onError={() => setProfile(prev => prev ? { ...prev, photo: '' } : prev)}
+              // No setProfile here, since profile is managed by context
+              onError={() => {/* Optionally handle image error */}}
             />
           ) : (
             <View style={styles.profilePlaceholder}>
