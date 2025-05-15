@@ -1,5 +1,6 @@
 import { supabase } from '../app/lib/supabase';
 import { Profile } from '../types';
+import * as FileSystem from 'expo-file-system';
 
 export const profileController = {
   // Get profile by ID
@@ -60,35 +61,36 @@ export const profileController = {
   // Upload profile photo
   async uploadProfilePhoto(profId: string, photoUri: string): Promise<{ error: any; data: { url: string } | null }> {
     try {
-      // Convert URI to blob
-      const response = await fetch(photoUri);
-      const blob = await response.blob();
-      
-      const fileName = `profile-${profId}-${Date.now()}`;
+      const fileName = `profile-${profId}-${Date.now()}.jpg`;
       const filePath = `profiles/${fileName}`;
-      
-      // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase
-        .storage
+
+      // Read the file into a binary buffer
+      const fileData = await FileSystem.readAsStringAsync(photoUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      const byteArray = Uint8Array.from(atob(fileData), (c) => c.charCodeAt(0));
+
+      const { data, error } = await supabase.storage
         .from('profile-photos')
-        .upload(filePath, blob);
-      
-      if (uploadError) throw uploadError;
-      
+        .upload(filePath, byteArray, {
+          contentType: 'image/jpeg',
+          upsert: true,
+        });
+
+      if (error) throw error;
+
       // Get public URL
-      const { data: urlData } = supabase
-        .storage
-        .from('profile-photos')
-        .getPublicUrl(filePath);
-      
-      // Update profile with new photo URL
+      const { data: urlData } = supabase.storage.from('profile-photos').getPublicUrl(filePath);
+
+      // Update profile
       const { error: updateError } = await supabase
         .from('profile')
         .update({ photo: urlData.publicUrl })
         .eq('prof_id', profId);
-      
+
       if (updateError) throw updateError;
-      
+
       return { data: { url: urlData.publicUrl }, error: null };
     } catch (error) {
       console.error('Upload profile photo error:', error);

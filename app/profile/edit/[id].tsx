@@ -19,8 +19,7 @@ import { profileController } from "../../../controllers/profileController";
 import { userController } from "../../../controllers/userController";
 import { Profile } from "../../../types";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { supabase } from '../../lib/supabase';
-
+import { supabase } from '../../../app/lib/supabase';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -48,12 +47,6 @@ export default function EditProfileScreen() {
         // Get user data (for email)
         const { data: userData, error: userError } = await userController.getCurrentUser();
         if (userError) throw userError;
-        
-        // if (error) {
-        //   console.error("Error fetching profile:", error);
-        //   Alert.alert("Error", "Failed to load profile information");
-        //   return;
-        // }
         
         if (profileData && userData) {
           setProfile(profileData);
@@ -178,16 +171,19 @@ export default function EditProfileScreen() {
       >
         <ScrollView style={styles.scrollView}>
           <View style={styles.profileImageSection}>
-            <View style={styles.profileImageContainer}>
-              {photo ? (
-                <Image source={{ uri: photo }} style={styles.profileImage} />
-              ) : (
-                <View style={styles.profileImagePlaceholder}>
-                  <Text style={styles.profileImageText}>
-                    {name ? name.charAt(0).toUpperCase() : "?"}
-                  </Text>
-                </View>
-              )}
+            <View style={styles.profileImageWrapper}>
+              <View style={styles.profileImageContainer}>
+                {photo ? (
+                  <Image source={{ uri: photo }} style={styles.profileImage} />
+                ) : (
+                  <View style={styles.profileImagePlaceholder}>
+                    <Text style={styles.profileImageText}>
+                      {name ? name.charAt(0).toUpperCase() : "?"}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              {/* Camera button positioned on top of the profile image */}
               <TouchableOpacity style={styles.editPhotoButton} onPress={handlePickImage}>
                 <MaterialIcons name="photo-camera" size={20} color="#fff" />
               </TouchableOpacity>
@@ -290,13 +286,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 20,
   },
+  profileImageWrapper: {
+    position: "relative",
+    marginBottom: 12,
+  },
   profileImageContainer: {
     width: 100,
     height: 100,
     borderRadius: 50,
     overflow: "hidden",
-    marginBottom: 12,
-    position: "relative",
   },
   profileImage: {
     width: "100%",
@@ -326,7 +324,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 2,
     borderColor: "#fff",
-    zIndex:50
+    zIndex: 50,
   },
   profileName: {
     fontSize: 20,
