@@ -19,7 +19,7 @@ export default function AppHeader({ onNotificationPress, onProfilePress }: AppHe
   const [fontsLoaded] = useFonts({
     'Allison': require('../../assets/fonts/Allison-Regular.ttf'),
   });
-  console.log(profile);
+  // console.log(profile);
 
   useEffect(() => {
     if (!profile) return;

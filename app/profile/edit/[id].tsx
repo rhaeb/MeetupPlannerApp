@@ -27,6 +27,7 @@ export default function EditProfileScreen() {
   const { id } = useLocalSearchParams();
   const { profile,loading } = useProfile();
   const [saving, setSaving] = useState(false);
+  const { setProfile: setGlobalProfile } = useProfile();
 
   // Form state
   const [name, setName] = useState("");
@@ -94,6 +95,8 @@ export default function EditProfileScreen() {
     try {
       setSaving(true);
 
+      let updatedPhoto = profile.photo;
+
       // Upload photo if changed
       if (photo && photo !== profile.photo) {
         const { data: photoData, error: photoError } = await profileController.uploadProfilePhoto(
@@ -106,9 +109,10 @@ export default function EditProfileScreen() {
           Alert.alert("Error", "Failed to upload profile photo");
           return;
         }
+
+        updatedPhoto = photoData?.url || profile.photo;
       }
 
-      // Update profile table
       const updates: Partial<Profile> = {
         name,
         username,
@@ -122,6 +126,13 @@ export default function EditProfileScreen() {
         Alert.alert("Error", "Failed to update profile information");
         return;
       }
+
+      // ✅ Update the global profile context
+      setGlobalProfile({
+        ...profile,
+        ...updates,
+        photo: updatedPhoto,
+      });
 
       Alert.alert("Success", "Profile updated successfully", [
         { text: "OK", onPress: () => router.back() }
