@@ -15,9 +15,9 @@ Welcome! Follow these steps to get the project running locally.
 git clone https://github.com/yourusername/MeetupPlannerApp.git
 cd MeetupPlannerApp
 
-## 2. Install Dependencies
-
 ```
+## 2. Install the Dependencies 
+
 npm install or
 npx expo install
 
