@@ -16,8 +16,11 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { profileController } from "../../../controllers/profileController";
+import { userController } from "../../../controllers/userController";
 import { Profile } from "../../../types";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { supabase } from '../../lib/supabase';
+
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -30,7 +33,6 @@ export default function EditProfileScreen() {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [address, setAddress] = useState("");
-  const [email, setEmail] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,21 +41,26 @@ export default function EditProfileScreen() {
       
       try {
         setLoading(true);
-        const { data, error } = await profileController.getProfileById(id as string);
+        // Get profile data by ID
+        const { data: profileData, error: profileError } = await profileController.getProfileById(id as string);
+        if (profileError) throw profileError;
+
+        // Get user data (for email)
+        const { data: userData, error: userError } = await userController.getCurrentUser();
+        if (userError) throw userError;
         
-        if (error) {
-          console.error("Error fetching profile:", error);
-          Alert.alert("Error", "Failed to load profile information");
-          return;
-        }
+        // if (error) {
+        //   console.error("Error fetching profile:", error);
+        //   Alert.alert("Error", "Failed to load profile information");
+        //   return;
+        // }
         
-        if (data) {
-          setProfile(data);
-          setName(data.name || "");
-          setUsername(data.username || "");
-          setAddress(data.address || "");
-          setEmail(data.email || "");
-          setPhoto(data.photo || null);
+        if (profileData && userData) {
+          setProfile(profileData);
+          setName(profileData.name || "");
+          setUsername(profileData.username || "");
+          setAddress(profileData.address || "");
+          setPhoto(profileData.photo || null);
         }
       } catch (error) {
         console.error("Error in fetchProfile:", error);
@@ -93,40 +100,39 @@ export default function EditProfileScreen() {
 
   const handleSave = async () => {
     if (!profile) return;
-    
+
     try {
       setSaving(true);
-      
-      // First upload photo if changed
+
+      // Upload photo if changed
       if (photo && photo !== profile.photo) {
         const { data: photoData, error: photoError } = await profileController.uploadProfilePhoto(
           profile.prof_id,
           photo
         );
-        
+
         if (photoError) {
           console.error("Error uploading photo:", photoError);
           Alert.alert("Error", "Failed to upload profile photo");
           return;
         }
       }
-      
-      // Update profile information
+
+      // Update profile table
       const updates: Partial<Profile> = {
         name,
         username,
         address,
-        email
       };
-      
+
       const { error } = await profileController.updateProfile(profile.prof_id, updates);
-      
+
       if (error) {
         console.error("Error updating profile:", error);
         Alert.alert("Error", "Failed to update profile information");
         return;
       }
-      
+
       Alert.alert("Success", "Profile updated successfully", [
         { text: "OK", onPress: () => router.back() }
       ]);
@@ -226,18 +232,6 @@ export default function EditProfileScreen() {
                 placeholder="Enter your location"
               />
             </View>
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="Enter your email"
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
           </View>
           
           <TouchableOpacity 
@@ -332,6 +326,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 2,
     borderColor: "#fff",
+    zIndex:50
   },
   profileName: {
     fontSize: 20,

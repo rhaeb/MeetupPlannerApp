@@ -104,26 +104,29 @@ export const userController = {
   },
 
   // Get current user
-  async getCurrentUser(): Promise<{ error: any; data: User | null }> {
+  async getCurrentUser(): Promise<{ error: any; data: { id: string; email: string } | null }> {
     try {
-      const { data: authData, error: authError } = await supabase.auth.getUser();
-      if (authError) throw authError;
-
-      if (!authData.user) {
-        return { data: null, error: null };
-      }
-
-      const { data, error } = await supabase
-        .from('user')
-        .select('*')
-        .eq('user_id', authData.user.id)
-        .single();
-
+      const { data: { user }, error } = await supabase.auth.getUser();
       if (error) throw error;
+      if (!user) return { data: null, error: null };
 
-      return { data, error: null };
+      return { data: { id: user.id, email: user.email }, error: null };
     } catch (error) {
       console.error('Get current user error:', error);
+      return { data: null, error };
+    }
+  },
+
+  async updateUserEmail(newEmail: string) {
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        email: newEmail,
+      });
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error updating user email:', error);
       return { data: null, error };
     }
   },
@@ -160,6 +163,23 @@ export const userController = {
     } catch (error) {
       console.error('Delete user error:', error);
       return { error };
+    }
+  },
+
+  // Get user by ID
+  async getUserById(userId: string): Promise<{ error: any; data: User | null }> {
+    try {
+      const { data, error } = await supabase
+        .from('user')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Get user by ID error:', error);
+      return { data: null, error };
     }
   },
 };
