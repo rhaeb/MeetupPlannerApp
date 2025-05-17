@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { supabase } from "../lib/supabase"; // Import Supabase client
+import { supabase } from "../../lib/supabase"; // Import Supabase client
 import { Event } from "../../types";
 import { useAuth } from "../../hooks/useAuth"; // Import useAuth hook
 

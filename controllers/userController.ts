@@ -1,4 +1,4 @@
-import { supabase } from '../app/lib/supabase';
+import { supabase } from '../lib/supabase';
 import { User, Profile } from '../types';
 
 export const userController = {

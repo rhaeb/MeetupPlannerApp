@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { FontAwesome, MaterialIcons } from '@expo/vector-icons';
-import { supabase } from '../lib/supabase';  // Import Supabase client
+import { supabase } from '../../lib/supabase';
 import { useRouter, Link } from 'expo-router';  // Import Link from expo-router
 import { KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard } from 'react-native';
 export default function SignupScreen() {

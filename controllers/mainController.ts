@@ -1,4 +1,4 @@
-import { supabase } from '../app/lib/supabase';
+import { supabase } from '../lib/supabase';
 import { eventController } from './eventController';
 import { notificationController } from './notificationController';
 import { messageController } from './messageController';

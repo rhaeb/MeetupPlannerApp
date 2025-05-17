@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AppHeader from "../components/AppHeader";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StyleSheet } from "react-native";
-import { ProfileProvider } from '../ProfileContext'; 
+import { ProfileProvider } from '../../contexts/ProfileContext'; 
 
 export default function TabLayout() {
   return (

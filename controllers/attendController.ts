@@ -1,4 +1,4 @@
-import { supabase } from '../app/lib/supabase';
+import { supabase } from '../lib/supabase';
 
 export async function getEventAttendees(eventId) {
   const { data, error } = await supabase

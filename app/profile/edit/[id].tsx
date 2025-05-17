@@ -19,8 +19,8 @@ import { profileController } from "../../../controllers/profileController";
 import { userController } from "../../../controllers/userController";
 import { Profile } from "../../../types";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { supabase } from '../../../app/lib/supabase';
-import { useProfile } from "../../ProfileContext";
+import { supabase } from '../../../lib/supabase';
+import { useProfile } from "../../../contexts/ProfileContext";
 
 export default function EditProfileScreen() {
   const router = useRouter();

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth"; // Adjust path as needed
-import { supabase } from "./lib/supabase";
+import { supabase } from "../lib/supabase";
 
 export const ProfileContext = createContext(null);
 
@@ -23,13 +23,22 @@ export function ProfileProvider({ children }) {
         .eq("user_id", user.id)
         .single();
       if (!error) setProfile(data);
-console.log(
-    "ggggggg", data
-);
-
       setLoading(false);
     };
     fetchProfile();
+
+    // Listen for auth state changes to clear profile on logout
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event) => {
+        if (event === "SIGNED_OUT") {
+          setProfile(null);
+        }
+      }
+    );
+
+    return () => {
+      authListener?.subscription?.unsubscribe?.();
+    };
   }, [user]);
 
   return (

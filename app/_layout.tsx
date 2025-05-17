@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter, usePathname } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
-import { ProfileProvider } from './ProfileContext'; 
+import { ProfileProvider } from '../contexts/ProfileContext'; 
 
 export default function RootLayout() {
   const { user, loading } = useAuth();
@@ -17,7 +17,8 @@ export default function RootLayout() {
       const isAuthPage =
         pathname === '/login' ||
         pathname === '/forgotPassword' ||
-        pathname === '/reset-password-confirm';
+        pathname === '/reset-password-confirm' ||
+        pathname === '/signup';
 
       if (user && !isAuthPage) {
         router.replace('/tabs');
@@ -41,8 +42,8 @@ export default function RootLayout() {
       <ProfileProvider>
         <StatusBar style="auto" />
         <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
           <Stack.Screen name="tabs" />
-          <Stack.Screen name="login" />
         </Stack>
       </ProfileProvider>
     </>

@@ -15,7 +15,7 @@ import { useAuth } from "../../../hooks/useAuth";
 import { userController } from "../../../controllers/userController";
 import { notificationController } from "../../../controllers/notificationController";
 import AppHeader from "../../components/AppHeader";
-import { useProfile } from "../../ProfileContext"; // Adjust path
+import { useProfile } from "../../../contexts/ProfileContext"; // Adjust path
 
 export default function ProfileScreen() {
   const { user } = useAuth();

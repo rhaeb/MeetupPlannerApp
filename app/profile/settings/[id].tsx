@@ -15,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { profileController } from "../../../controllers/profileController";
 import { userController } from "../../../controllers/userController";
-import { supabase } from '../../../app/lib/supabase';
+import { supabase } from '../../../lib/supabase';
 import { Profile } from "../../../types";
 
 export default function SettingsScreen() {

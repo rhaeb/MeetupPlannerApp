@@ -3,10 +3,10 @@ import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { useFonts } from 'expo-font';
 import { Bell, HelpCircle } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import { notificationController } from '../../controllers/notificationController';
 import { userController } from '../../controllers/userController';
-import { useProfile } from "../ProfileContext";
+import { useProfile } from "../../contexts/ProfileContext";
 
 interface AppHeaderProps {
   onNotificationPress?: () => void;

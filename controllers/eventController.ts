@@ -1,4 +1,4 @@
-import { supabase } from '../app/lib/supabase';
+import { supabase } from '../lib/supabase';
 import { Event, Attend, Profile } from '../types';
 
 export const eventController = {

@@ -1,4 +1,4 @@
-import { supabase } from '../app/lib/supabase';
+import { supabase } from '../lib/supabase';
 import { Profile } from '../types';
 import * as FileSystem from 'expo-file-system';
 
