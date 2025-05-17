@@ -13,11 +13,13 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!loading) {
-      const isAuthPage = pathname?.startsWith('/(auth)');
+      const authPaths = ['/login', '/forgotPassword', '/reset-password-confirm', '/signup'];
+      const isAuthPage = authPaths.includes(pathname);
+
       if (user && isAuthPage) {
         router.replace('/tabs');
       } else if (!user && !isAuthPage) {
-        router.replace('/(auth)/login');
+        router.replace('/login'); // or '/(auth)' if that is your main auth route
       }
     }
   }, [user, loading, pathname]);

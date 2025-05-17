@@ -30,7 +30,7 @@ export default function ProfileScreen() {
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(true);
 
-  console.log("Profile:", profile);
+  // console.log("Profile:", profile);
 
   useEffect(() => {
     if (profile) {
