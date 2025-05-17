@@ -1,11 +1,17 @@
+// app/tabs/_layout.tsx
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AppHeader from "../components/AppHeader";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { StyleSheet } from "react-native";
-import { ProfileProvider } from '../../contexts/ProfileContext'; 
+import AppHeader from '../components/AppHeader';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet } from 'react-native';
 
 export default function TabLayout() {
+  const Header = () => (
+    <SafeAreaView style={styles.safeArea}>
+      <AppHeader />
+    </SafeAreaView>
+  );
+
   return (
     <Tabs
       screenOptions={{
@@ -17,73 +23,45 @@ export default function TabLayout() {
         },
       }}
     >
-      {/* Home Screen with AppHeader */}
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
           tabBarIcon: ({ color }) => <Ionicons name="home" size={24} color={color} />,
-          header: () => (
-            <SafeAreaView style={styles.safeArea}>
-              <AppHeader />
-            </SafeAreaView>
-          ),
+          header: Header,
         }}
       />
-
-      {/* Events Screen with AppHeader */}
       <Tabs.Screen
         name="events/index"
         options={{
           title: 'Events',
           tabBarIcon: ({ color }) => <Ionicons name="calendar" size={24} color={color} />,
-          header: () => (
-            <SafeAreaView style={styles.safeArea}>
-              <AppHeader />
-            </SafeAreaView>
-          ),
+          header: Header,
         }}
       />
-
-      {/* Friends Screen without AppHeader */}
       <Tabs.Screen
         name="friends/index"
         options={{
           title: 'Friends',
           tabBarIcon: ({ color }) => <Ionicons name="people" size={24} color={color} />,
-          header: () => (
-            <SafeAreaView style={styles.safeArea}>
-              <AppHeader />
-            </SafeAreaView>
-          ),
+          header: Header,
         }}
       />
-
-      {/* Messages Screen without AppHeader */}
       <Tabs.Screen
         name="messages/index"
         options={{
           title: 'Messages',
           tabBarIcon: ({ color }) => <Ionicons name="chatbubbles" size={24} color={color} />,
-          header: () => (
-            <SafeAreaView style={styles.safeArea}>
-              <AppHeader />
-            </SafeAreaView>
-          ),
+          header: Header,
         }}
       />
-
-      {/* Profile Screen with AppHeader */}
       <Tabs.Screen
         name="profile/index"
         options={{
           title: 'Profile',
           tabBarIcon: ({ color }) => <Ionicons name="person" size={24} color={color} />,
-          header: () => (
-            <SafeAreaView style={styles.safeArea}>
-              {/* <AppHeader /> */}
-            </SafeAreaView>
-          ),
+          headerShown: false,
+          // header: Header,
         }}
       />
     </Tabs>
@@ -92,6 +70,6 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: '#fff', // Match the AppHeader background color
+    backgroundColor: '#fff',
   },
 });

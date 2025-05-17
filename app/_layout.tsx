@@ -1,10 +1,10 @@
+// app/_layout.tsx
 import { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useRouter, usePathname } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
-import { ProfileProvider } from '../contexts/ProfileContext'; 
+import { ProfileProvider } from '../contexts/ProfileContext';
 
 export default function RootLayout() {
   const { user, loading } = useAuth();
@@ -13,23 +13,16 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!loading) {
-      // Only redirect to /tabs if NOT on an auth page
-      const isAuthPage =
-        pathname === '/login' ||
-        pathname === '/forgotPassword' ||
-        pathname === '/reset-password-confirm' ||
-        pathname === '/signup';
-
-      if (user && !isAuthPage) {
+      const isAuthPage = pathname?.startsWith('/(auth)');
+      if (user && isAuthPage) {
         router.replace('/tabs');
       } else if (!user && !isAuthPage) {
-        router.replace('/login');
+        router.replace('/(auth)/login');
       }
     }
-  }, [user, loading, router, pathname]);
+  }, [user, loading, pathname]);
 
   if (loading) {
-    // Show a loading indicator while checking authentication
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#2E7D32" />
@@ -38,15 +31,13 @@ export default function RootLayout() {
   }
 
   return (
-    <>
-      <ProfileProvider>
-        <StatusBar style="auto" />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="tabs" />
-        </Stack>
-      </ProfileProvider>
-    </>
+    <ProfileProvider>
+      <StatusBar style="auto" />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="tabs" />
+      </Stack>
+    </ProfileProvider>
   );
 }
 
