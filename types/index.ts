@@ -44,8 +44,8 @@ export interface Event {
   event_id: string;
   name: string;
   description: string;
-  date_start: string;
-  date_end: string;
+  date_start: string | number; // Timestamp (ISO string or Unix)
+  date_end: string | number;   // Timestamp (ISO string or Unix)
   time: string;
   address: string;
   picture: string | null;
@@ -73,6 +73,8 @@ export interface Notification {
   content: string;
   event_id: string | null;
   prof_id: string;
+  type: string;
+  read: boolean; // <-- Add this line
   event?: Event; // For joined queries
   profile?: Profile; // For joined queries
 }
