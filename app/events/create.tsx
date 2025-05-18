@@ -20,6 +20,8 @@ import DateTimePicker from "@react-native-community/datetimepicker"
 import * as ImagePicker from "expo-image-picker"
 import { eventController } from "../../controllers/eventController"
 import { useAuth } from "../../hooks/useAuth"
+import { supabase } from '../../lib/supabase';
+import { Event, Attend, Profile } from '../../types';
 
 // Sample event images
 const sampleImages = [
@@ -40,6 +42,9 @@ export default function CreateEventScreen() {
   const [customImage, setCustomImage] = useState<string | null>(null)
   const [attendees, setAttendees] = useState<string[]>([])
   const [creating, setCreating] = useState(false)
+  const [attendeeQuery, setAttendeeQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Profile[]>([]);
+  const [selectedAttendees, setSelectedAttendees] = useState<Profile[]>([]);
   
   // Date pickers
   const [showStartDatePicker, setShowStartDatePicker] = useState(false)
@@ -59,6 +64,29 @@ export default function CreateEventScreen() {
       setEndDate(new Date(currentDate.getTime() + 60 * 60 * 1000))
     }
   }
+
+  const searchProfiles = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    // Join users table to get email for searching
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*, users(email)")
+      .or(`username.ilike.%${query}%,users.email.ilike.%${query}%`);
+
+    if (!error && data) setSearchResults(data);
+  };
+
+  const addAttendee = (profile: Profile) => {
+    if (!selectedAttendees.some(p => p.prof_id === profile.prof_id)) {
+      setSelectedAttendees(prev => [...prev, profile]);
+    }
+    setAttendeeQuery("");
+    setSearchResults([]);
+  };
 
   const onEndDateChange = (event, selectedDate) => {
     const currentDate = selectedDate || endDate
@@ -179,10 +207,11 @@ export default function CreateEventScreen() {
       }
 
       // Add attendees if any
-      if (attendees.length > 0 && event) {
+      if (selectedAttendees.length > 0 && event) {
+        const profIds = selectedAttendees.map(p => p.prof_id);
         const { error: attendeeError } = await eventController.addAttendees(
           event.event_id,
-          attendees
+          profIds
         );
         if (attendeeError) {
           console.error("Error adding attendees:", attendeeError);
@@ -370,10 +399,35 @@ export default function CreateEventScreen() {
         {/* Invite Attendees */}
         <View style={styles.formGroup}>
           <Text style={styles.label}>Invite Attendees</Text>
-          <TouchableOpacity style={styles.inviteButton}>
-            <Ionicons name="person-add-outline" size={20} color="#4CAF50" />
-            <Text style={styles.inviteButtonText}>Add People</Text>
-          </TouchableOpacity>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter username or email"
+            value={attendeeQuery}
+            onChangeText={(text) => {
+              setAttendeeQuery(text);
+              searchProfiles(text);
+            }}
+          />
+          {searchResults.length > 0 && (
+            <View style={styles.searchResultContainer}>
+              {searchResults.map((profile) => (
+                <TouchableOpacity 
+                  key={profile.prof_id} 
+                  onPress={() => addAttendee(profile)}
+                  style={styles.resultItem}
+                >
+                  <Text>
+                    {profile.username} ({profile.users?.email || "No email"})
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          <View style={{ marginTop: 10 }}>
+            {selectedAttendees.map(p => (
+              <Text key={p.prof_id}>✓ {p.username}</Text>
+            ))}
+          </View>
         </View>
 
         
@@ -523,5 +577,18 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 16,
     color: "#4CAF50",
+  },
+  searchResultContainer: {
+    backgroundColor: "#fff",
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 5,
+    maxHeight: 150,
+    marginTop: 5,
+  },
+  resultItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
   },
 })
