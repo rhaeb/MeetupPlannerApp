@@ -1,21 +1,51 @@
 "use client"
 
-import React from "react"
-import { useState } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Switch } from "react-native"
+import React, { useState, useEffect } from "react"
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  TextInput, 
+  ScrollView, 
+  Platform, 
+  Image,
+  Alert,
+  ActivityIndicator
+} from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import DateTimePicker from "@react-native-community/datetimepicker"
+import * as ImagePicker from "expo-image-picker"
+import { eventController } from "../../controllers/eventController"
+import { useAuth } from "../../hooks/useAuth"
+
+// Sample event images
+const sampleImages = [
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YmVhY2h8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60",
+  "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y29uY2VydHxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=500&q=60",
+  "https://images.unsplash.com/photo-1555679486-e341a3e7b6de?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YXF1YXJpdW18ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60"
+]
 
 export default function CreateEventScreen() {
   const router = useRouter()
-  const [title, setTitle] = useState("")
-  const [location, setLocation] = useState("")
+  const { profile } = useAuth()
+  
+  // Form state
+  const [name, setName] = useState("")
   const [description, setDescription] = useState("")
-  const [isPublic, setIsPublic] = useState(true)
+  const [address, setAddress] = useState("")
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [customImage, setCustomImage] = useState<string | null>(null)
+  const [attendees, setAttendees] = useState<string[]>([])
+  const [creating, setCreating] = useState(false)
+  
+  // Date pickers
   const [showStartDatePicker, setShowStartDatePicker] = useState(false)
   const [showEndDatePicker, setShowEndDatePicker] = useState(false)
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false)
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false)
   const [startDate, setStartDate] = useState(new Date())
   const [endDate, setEndDate] = useState(new Date(new Date().getTime() + 60 * 60 * 1000)) // 1 hour later
 
@@ -36,6 +66,24 @@ export default function CreateEventScreen() {
     setEndDate(currentDate)
   }
 
+  const onStartTimeChange = (event, selectedTime) => {
+    setShowStartTimePicker(false)
+    if (selectedTime) {
+      const newDate = new Date(startDate)
+      newDate.setHours(selectedTime.getHours(), selectedTime.getMinutes())
+      setStartDate(newDate)
+    }
+  }
+
+  const onEndTimeChange = (event, selectedTime) => {
+    setShowEndTimePicker(false)
+    if (selectedTime) {
+      const newDate = new Date(endDate)
+      newDate.setHours(selectedTime.getHours(), selectedTime.getMinutes())
+      setEndDate(newDate)
+    }
+  }
+
   const formatDate = (date) => {
     return date.toLocaleString("en-US", {
       month: "short",
@@ -46,6 +94,114 @@ export default function CreateEventScreen() {
     })
   }
 
+  const handleSelectImage = (imageUrl) => {
+    setSelectedImage(imageUrl)
+    setCustomImage(null)
+  }
+
+  const handlePickImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      
+      if (!permissionResult.granted) {
+        Alert.alert("Permission Required", "You need to grant permission to access your photos")
+        return
+      }
+      
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      })
+      
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setCustomImage(result.assets[0].uri)
+        setSelectedImage(null)
+      }
+    } catch (error) {
+      console.error("Error picking image:", error)
+      Alert.alert("Error", "Failed to pick image")
+    }
+  }
+
+  const handleDeleteImage = () => {
+    setSelectedImage(null)
+    setCustomImage(null)
+  }
+
+  const handleCreateEvent = async () => {
+    if (!profile) {
+      Alert.alert("Error", "You must be logged in to create an event")
+      return
+    }
+
+    if (!name.trim()) {
+      Alert.alert("Error", "Please enter an event name")
+      return
+    }
+
+    if (!address.trim()) {
+      Alert.alert("Error", "Please enter an event location")
+      return
+    }
+
+    try {
+      setCreating(true);
+
+      // Create event
+      const eventData = {
+        name,
+        description,
+        date_start: startDate.toISOString(),
+        date_end: endDate.toISOString(),
+        time: startDate.toLocaleTimeString(),
+        address,
+        picture: selectedImage || "",
+        status: "planned",
+        rating: 0,
+        hoster_id: profile.prof_id
+      };
+
+      const { data: event, error } = await eventController.createEvent(eventData);
+
+      if (error) throw error;
+
+      // Upload custom image if selected
+      if (customImage && event) {
+        const { error: uploadError } = await eventController.uploadEventPicture(
+          event.event_id,
+          customImage
+        );
+        if (uploadError) {
+          console.error("Error uploading image:", uploadError);
+        }
+      }
+
+      // Add attendees if any
+      if (attendees.length > 0 && event) {
+        const { error: attendeeError } = await eventController.addAttendees(
+          event.event_id,
+          attendees
+        );
+        if (attendeeError) {
+          console.error("Error adding attendees:", attendeeError);
+        }
+      }
+
+      Alert.alert(
+        "Success",
+        "Event created successfully!",
+        [{ text: "OK", onPress: () => router.replace("/tabs/events") }]
+      );
+    } catch (error) {
+      console.error("Error creating event:", error)
+      Alert.alert("Error", "Failed to create event. Please try again.")
+    } finally {
+      setCreating(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -53,62 +209,33 @@ export default function CreateEventScreen() {
           <Ionicons name="close" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Create Event</Text>
-        <TouchableOpacity style={styles.createButton}>
-          <Text style={styles.createButtonText}>Create</Text>
-        </TouchableOpacity>
+        {/* <TouchableOpacity 
+          style={styles.createButton} 
+          onPress={handleCreateEvent}
+          disabled={creating}
+        >
+          {creating ? (
+            <ActivityIndicator size="small" color="#4CAF50" />
+          ) : (
+            <Text style={styles.createButtonText}>Create</Text>
+          )}
+        </TouchableOpacity> */}
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Name */}
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Event Title</Text>
+          <Text style={styles.label}>Event Name</Text>
           <TextInput
             style={styles.input}
-            value={title}
-            onChangeText={setTitle}
-            placeholder="Enter event title"
+            value={name}
+            onChangeText={setName}
+            placeholder="Enter event name"
             placeholderTextColor="#999"
           />
         </View>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Start Date & Time</Text>
-          <TouchableOpacity style={styles.dateInput} onPress={() => setShowStartDatePicker(true)}>
-            <Text style={styles.dateText}>{formatDate(startDate)}</Text>
-            <Ionicons name="calendar-outline" size={20} color="#666" />
-          </TouchableOpacity>
-          {showStartDatePicker && (
-            <DateTimePicker value={startDate} mode="datetime" display="default" onChange={onStartDateChange} />
-          )}
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>End Date & Time</Text>
-          <TouchableOpacity style={styles.dateInput} onPress={() => setShowEndDatePicker(true)}>
-            <Text style={styles.dateText}>{formatDate(endDate)}</Text>
-            <Ionicons name="calendar-outline" size={20} color="#666" />
-          </TouchableOpacity>
-          {showEndDatePicker && (
-            <DateTimePicker
-              value={endDate}
-              mode="datetime"
-              display="default"
-              onChange={onEndDateChange}
-              minimumDate={startDate}
-            />
-          )}
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Location</Text>
-          <TextInput
-            style={styles.input}
-            value={location}
-            onChangeText={setLocation}
-            placeholder="Enter location"
-            placeholderTextColor="#999"
-          />
-        </View>
-
+        {/* Description */}
         <View style={styles.formGroup}>
           <Text style={styles.label}>Description</Text>
           <TextInput
@@ -123,22 +250,124 @@ export default function CreateEventScreen() {
           />
         </View>
 
+        {/* Start Date & Time */}
         <View style={styles.formGroup}>
-          <View style={styles.switchContainer}>
-            <Text style={styles.switchLabel}>Public Event</Text>
-            <Switch
-              trackColor={{ false: "#ccc", true: "#4CAF50" }}
-              thumbColor="#fff"
-              ios_backgroundColor="#ccc"
-              onValueChange={setIsPublic}
-              value={isPublic}
+          <Text style={styles.label}>Start Date & Time</Text>
+          <TouchableOpacity style={styles.dateInput} onPress={() => setShowStartDatePicker(true)}>
+            <Text style={styles.dateText}>{formatDate(startDate)}</Text>
+            <Ionicons name="calendar-outline" size={20} color="#666" />
+          </TouchableOpacity>
+          {showStartDatePicker && (
+            <DateTimePicker
+              value={startDate}
+              mode={Platform.OS === "android" ? "date" : "datetime"}
+              display="default"
+              onChange={onStartDateChange}
             />
-          </View>
-          <Text style={styles.switchDescription}>
-            Public events can be discovered by anyone. Private events are only visible to invited attendees.
-          </Text>
+          )}
+          {Platform.OS === "android" && (
+            <>
+              <TouchableOpacity style={styles.dateInput} onPress={() => setShowStartTimePicker(true)}>
+                <Text style={styles.dateText}>
+                  {startDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </Text>
+                <Ionicons name="time-outline" size={20} color="#666" />
+              </TouchableOpacity>
+              {showStartTimePicker && (
+                <DateTimePicker
+                  value={startDate}
+                  mode="time"
+                  display="default"
+                  onChange={onStartTimeChange}
+                />
+              )}
+            </>
+          )}
         </View>
 
+        {/* End Date & Time */}
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>End Date & Time</Text>
+          <TouchableOpacity style={styles.dateInput} onPress={() => setShowEndDatePicker(true)}>
+            <Text style={styles.dateText}>{formatDate(endDate)}</Text>
+            <Ionicons name="calendar-outline" size={20} color="#666" />
+          </TouchableOpacity>
+          {showEndDatePicker && (
+            <DateTimePicker
+              value={endDate}
+              mode={Platform.OS === "android" ? "date" : "datetime"}
+              display="default"
+              onChange={onEndDateChange}
+              minimumDate={startDate}
+            />
+          )}
+          {Platform.OS === "android" && (
+            <>
+              <TouchableOpacity style={styles.dateInput} onPress={() => setShowEndTimePicker(true)}>
+                <Text style={styles.dateText}>
+                  {endDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </Text>
+                <Ionicons name="time-outline" size={20} color="#666" />
+              </TouchableOpacity>
+              {showEndTimePicker && (
+                <DateTimePicker
+                  value={endDate}
+                  mode="time"
+                  display="default"
+                  onChange={onEndTimeChange}
+                />
+              )}
+            </>
+          )}
+        </View>
+
+        {/* Location */}
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Location</Text>
+          <TextInput
+            style={styles.input}
+            value={address}
+            onChangeText={setAddress}
+            placeholder="Enter location"
+            placeholderTextColor="#999"
+          />
+        </View>
+
+        {/* Choose Picture */}
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Choose a picture:</Text>
+          <View style={styles.imageSelectionContainer}>
+            {sampleImages.map((image, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.imageOption,
+                  selectedImage === image && styles.selectedImageOption
+                ]}
+                onPress={() => handleSelectImage(image)}
+              >
+                <Image source={{ uri: image }} style={styles.imagePreview} />
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={[
+                styles.imageOption,
+                styles.addImageOption,
+                customImage && styles.selectedImageOption
+              ]}
+              onPress={handlePickImage}
+            >
+              {customImage ? (
+                <Image source={{ uri: customImage }} style={styles.imagePreview} />
+              ) : (
+                <Ionicons name="add" size={30} color="#4CAF50" />
+              )}
+            </TouchableOpacity>
+          </View>
+          
+        </View>
+
+        {/* Invite Attendees */}
         <View style={styles.formGroup}>
           <Text style={styles.label}>Invite Attendees</Text>
           <TouchableOpacity style={styles.inviteButton}>
@@ -146,6 +375,17 @@ export default function CreateEventScreen() {
             <Text style={styles.inviteButtonText}>Add People</Text>
           </TouchableOpacity>
         </View>
+
+        
+        <TouchableOpacity 
+          style={styles.saveButton}
+          onPress={handleCreateEvent}
+          disabled={creating}
+        >
+          <Text style={styles.saveButtonText}>Create</Text>
+        </TouchableOpacity>
+
+
       </ScrollView>
     </SafeAreaView>
   )
@@ -158,7 +398,6 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 15,
@@ -170,12 +409,17 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   headerTitle: {
+    flex: 1, // take up remaining space
     fontSize: 18,
     fontWeight: "600",
     color: "#333",
+    textAlign: "left",
+    marginLeft: 10, // add some space from the close button
   },
   createButton: {
     padding: 5,
+    minWidth: 50,
+    alignItems: 'center',
   },
   createButtonText: {
     fontSize: 16,
@@ -184,6 +428,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+    paddingBottom: 40,
   },
   formGroup: {
     marginBottom: 20,
@@ -216,25 +461,54 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 10,
   },
   dateText: {
     fontSize: 16,
     color: "#333",
   },
-  switchContainer: {
+  imageSelectionContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginBottom: 15,
+  },
+  imageOption: {
+    width: '23%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  selectedImageOption: {
+    borderColor: "#4CAF50",
+  },
+  addImageOption: {
+    backgroundColor: "#e8f5e9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  imagePreview: {
+    width: "100%",
+    height: "100%",
+  },
+  imageActionButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
+  },
+  saveButton: {
+    flex: 2,
+    backgroundColor: "#4CAF50",
+    borderRadius: 8,
+    padding: 12,
     alignItems: "center",
-    marginBottom: 8,
   },
-  switchLabel: {
+  saveButtonText: {
+    color: "#fff",
     fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-  },
-  switchDescription: {
-    fontSize: 14,
-    color: "#666",
+    fontWeight: "500",
   },
   inviteButton: {
     flexDirection: "row",

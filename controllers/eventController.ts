@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { Event, Attend, Profile } from '../types';
+import * as FileSystem from 'expo-file-system';
 
 export const eventController = {
   // Create a new event
@@ -152,41 +153,64 @@ export const eventController = {
     }
   },
 
-  // Upload event picture
+  // Upload event picture (profile-style)
   async uploadEventPicture(eventId: string, pictureUri: string): Promise<{ error: any; data: { url: string } | null }> {
     try {
-      // Convert URI to blob
-      const response = await fetch(pictureUri);
-      const blob = await response.blob();
-      
-      const fileName = `event-${eventId}-${Date.now()}`;
+      const fileName = `event-${eventId}-${Date.now()}.jpg`;
       const filePath = `events/${fileName}`;
-      
-      // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase
-        .storage
+
+      // Read the file into a binary buffer (base64)
+      const fileData = await FileSystem.readAsStringAsync(pictureUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      const byteArray = Uint8Array.from(atob(fileData), (c) => c.charCodeAt(0));
+
+      const { data, error } = await supabase.storage
         .from('event-pictures')
-        .upload(filePath, blob);
-      
-      if (uploadError) throw uploadError;
-      
+        .upload(filePath, byteArray, {
+          contentType: 'image/jpeg',
+          upsert: true,
+        });
+
+      if (error) throw error;
+
       // Get public URL
-      const { data: urlData } = supabase
-        .storage
-        .from('event-pictures')
-        .getPublicUrl(filePath);
-      
+      const { data: urlData } = supabase.storage.from('event-pictures').getPublicUrl(filePath);
+
       // Update event with new picture URL
       const { error: updateError } = await supabase
         .from('event')
         .update({ picture: urlData.publicUrl })
         .eq('event_id', eventId);
-      
+
       if (updateError) throw updateError;
-      
+
       return { data: { url: urlData.publicUrl }, error: null };
     } catch (error) {
       console.error('Upload event picture error:', error);
+      return { data: null, error };
+    }
+  },
+
+  // Add multiple attendees to an event
+  async addAttendees(eventId: string, profIds: string[]): Promise<{ error: any; data: { count: number } | null }> {
+    try {
+      const attendees = profIds.map(profId => ({
+        prof_id: profId,
+        event_id: eventId,
+        status: 'invited'
+      }));
+      
+      const { data, error } = await supabase
+        .from('attend')
+        .insert(attendees);
+      
+      if (error) throw error;
+      
+      return { data: { count: profIds.length }, error: null };
+    } catch (error) {
+      console.error('Add attendees error:', error);
       return { data: null, error };
     }
   },
