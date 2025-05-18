@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient'; // Add this import
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -19,46 +20,53 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Image source={require('../assets/logo.png')} style={styles.logo} />
-      {/* <Text style={styles.title}>Tara</Text> */}
-      <Text style={styles.subtitle}>Forgot Password</Text>
+    <LinearGradient
+      colors={['#a5d6a7', '#57C785', '#AFED53']}
+      style={styles.container}
+    >
+      <View style={styles.contentContainer}>
+        <Image source={require('../assets/logo.png')} style={styles.logo} />
+        {/* <Text style={styles.title}>Tara</Text> */}
+        <Text style={styles.subtitle}>Forgot Password</Text>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      <View style={styles.inputContainer}>
-        <View style={styles.inputWrapper}>
-          <MaterialIcons name="email" size={20} color="black" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#000"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+        <View style={styles.inputContainer}>
+          <View style={styles.inputWrapper}>
+            <MaterialIcons name="email" size={20} color="black" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="#000"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
         </View>
+
+        <TouchableOpacity 
+          style={styles.resetButton} 
+          onPress={handleContinue}
+        >
+          <Text style={styles.resetText}>Continue</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={styles.backText}>Back to Login</Text>
+        </TouchableOpacity>
       </View>
-
-      <TouchableOpacity 
-        style={styles.resetButton} 
-        onPress={handleContinue}
-      >
-        <Text style={styles.resetText}>Continue</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => router.back()}>
-        <Text style={styles.backText}>Back to Login</Text>
-      </TouchableOpacity>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#b2dfdb',
+  },
+  contentContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,

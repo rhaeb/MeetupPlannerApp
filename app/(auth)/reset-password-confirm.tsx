@@ -3,6 +3,7 @@ import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, Alert } fro
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { userController } from '../../controllers/userController';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ResetPasswordConfirmScreen() {
   const router = useRouter();
@@ -53,80 +54,87 @@ export default function ResetPasswordConfirmScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Image source={require('../assets/logo.png')} style={styles.logo} />
-      {/* <Text style={styles.title}>Tara</Text> */}
-      <Text style={styles.subtitle}>Reset Password</Text>
+    <LinearGradient
+      colors={['#a5d6a7', '#57C785', '#AFED53']}
+      style={styles.container}
+    >
+      <View style={styles.contentContainer}>
+        <Image source={require('../assets/logo.png')} style={styles.logo} />
+        {/* <Text style={styles.title}>Tara</Text> */}
+        <Text style={styles.subtitle}>Reset Password</Text>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      <View style={styles.inputContainer}>
-        <View style={styles.inputWrapper}>
-          <MaterialIcons name="email" size={20} color="black" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#000"
-            value={email}
-            editable={false}
-          />
+        <View style={styles.inputContainer}>
+          <View style={styles.inputWrapper}>
+            <MaterialIcons name="email" size={20} color="black" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="#000"
+              value={email}
+              editable={false}
+            />
+          </View>
+          <View style={styles.inputWrapper}>
+            <MaterialIcons name="lock" size={20} color="black" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Current Password"
+              placeholderTextColor="#000"
+              value={oldPassword}
+              onChangeText={setOldPassword}
+              secureTextEntry
+            />
+          </View>
+          <View style={styles.inputWrapper}>
+            <MaterialIcons name="lock-outline" size={20} color="black" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="New Password"
+              placeholderTextColor="#000"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+            />
+          </View>
+          <View style={styles.inputWrapper}>
+            <MaterialIcons name="lock-outline" size={20} color="black" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm New Password"
+              placeholderTextColor="#000"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+            />
+          </View>
         </View>
-        <View style={styles.inputWrapper}>
-          <MaterialIcons name="lock" size={20} color="black" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Current Password"
-            placeholderTextColor="#000"
-            value={oldPassword}
-            onChangeText={setOldPassword}
-            secureTextEntry
-          />
-        </View>
-        <View style={styles.inputWrapper}>
-          <MaterialIcons name="lock-outline" size={20} color="black" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="New Password"
-            placeholderTextColor="#000"
-            value={newPassword}
-            onChangeText={setNewPassword}
-            secureTextEntry
-          />
-        </View>
-        <View style={styles.inputWrapper}>
-          <MaterialIcons name="lock-outline" size={20} color="black" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Confirm New Password"
-            placeholderTextColor="#000"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-          />
-        </View>
+
+        <TouchableOpacity 
+          style={styles.resetButton} 
+          onPress={handleUpdatePassword}
+          disabled={loading}
+        >
+          <Text style={styles.resetText}>
+            {loading ? 'Updating...' : 'Update Password'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.replace('/login')}>
+          <Text style={styles.backText}>Back to Login</Text>
+        </TouchableOpacity>
       </View>
-
-      <TouchableOpacity 
-        style={styles.resetButton} 
-        onPress={handleUpdatePassword}
-        disabled={loading}
-      >
-        <Text style={styles.resetText}>
-          {loading ? 'Updating...' : 'Update Password'}
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => router.replace('/login')}>
-        <Text style={styles.backText}>Back to Login</Text>
-      </TouchableOpacity>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#b2dfdb',
+  },
+  contentContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,

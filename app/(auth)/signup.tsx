@@ -4,6 +4,8 @@ import { FontAwesome, MaterialIcons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useRouter, Link } from 'expo-router';  // Import Link from expo-router
 import { KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+
 export default function SignupScreen() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -55,90 +57,93 @@ export default function SignupScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    style={{ flex: 1 }}
-  >
-    <ScrollView 
-      contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} // Center content
-      keyboardShouldPersistTaps="handled"
+    <LinearGradient
+      colors={['#a5d6a7', '#57C785', '#AFED53']}
+      style={{ flex: 1 }}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.container}>
-          <Image source={require('../assets/logo.png')} style={styles.logo} />
-          {/* <Text style={styles.title}>Tara</Text> */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.container}>
+              <Image source={require('../assets/logo.png')} style={styles.logo} />
+              {/* <Text style={styles.title}>Tara</Text> */}
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          <View style={styles.inputContainer}>
-            <View style={styles.inputWrapper}>
-              <FontAwesome name="user" size={18} color="black" style={styles.icon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Username"
-                placeholderTextColor="#000"
-                value={username}
-                onChangeText={setUsername}
-              />
-            </View>
-            <View style={styles.inputWrapper}>
-              <MaterialIcons name="email" size={20} color="black" style={styles.icon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor="#000"
-                value={email}
-                onChangeText={setEmail}
-              />
-            </View>
-            <View style={styles.inputWrapper}>
-              <MaterialIcons name="lock" size={20} color="black" style={styles.icon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                secureTextEntry
-                placeholderTextColor="#000"
-                value={password}
-                onChangeText={setPassword}
-              />
-            </View>
-            <View style={styles.inputWrapper}>
-              <MaterialIcons name="lock-outline" size={20} color="black" style={styles.icon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Confirm Password"
-                secureTextEntry
-                placeholderTextColor="#000"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-              />
-            </View>
-          </View>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputWrapper}>
+                  <FontAwesome name="user" size={18} color="black" style={styles.icon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Username"
+                    placeholderTextColor="#000"
+                    value={username}
+                    onChangeText={setUsername}
+                  />
+                </View>
+                <View style={styles.inputWrapper}>
+                  <MaterialIcons name="email" size={20} color="black" style={styles.icon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Email"
+                    placeholderTextColor="#000"
+                    value={email}
+                    onChangeText={setEmail}
+                  />
+                </View>
+                <View style={styles.inputWrapper}>
+                  <MaterialIcons name="lock" size={20} color="black" style={styles.icon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Password"
+                    secureTextEntry
+                    placeholderTextColor="#000"
+                    value={password}
+                    onChangeText={setPassword}
+                  />
+                </View>
+                <View style={styles.inputWrapper}>
+                  <MaterialIcons name="lock-outline" size={20} color="black" style={styles.icon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Confirm Password"
+                    secureTextEntry
+                    placeholderTextColor="#000"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                  />
+                </View>
+              </View>
 
-          <TouchableOpacity style={styles.signInButton} onPress={handleSignup}>
-            <Text style={styles.signInText}>Sign Up</Text>
-          </TouchableOpacity>
+              <TouchableOpacity style={styles.signInButton} onPress={handleSignup}>
+                <Text style={styles.signInText}>Sign Up</Text>
+              </TouchableOpacity>
 
-          <Text style={styles.signUpText}>
-            Already have an account?{' '}
-            <Link href="/login" asChild>
-              <Text style={styles.signUpLink}>Sign In</Text>
-            </Link>
-          </Text>
-        </View>
-      </TouchableWithoutFeedback>
-    </ScrollView>
-    </KeyboardAvoidingView>
+              <Text style={styles.signUpText}>
+                Already have an account?{' '}
+                <Link href="/login" asChild>
+                  <Text style={styles.signUpLink}>Sign In</Text>
+                </Link>
+              </Text>
+            </View>
+          </TouchableWithoutFeedback>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#b2dfdb',
     alignItems: 'center',
-    justifyContent: 'center'
-    ,
+    justifyContent: 'center',
     padding: 20,
   },
   logo: {
