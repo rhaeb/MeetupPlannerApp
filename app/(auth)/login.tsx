@@ -34,7 +34,7 @@ export default function LoginScreen() {
       colors={['#a5d6a7', '#57C785', '#AFED53']}
       style={styles.container}
     >
-      <View style={styles.contentContainer}>
+      <View style={styles.topContentContainer}>
         <View style={styles.logoContainer}>
           <Image source={require('../assets/logo.png')} style={styles.logo} />
           {/* <Text style={styles.title}>Tara</Text> */}
@@ -65,7 +65,10 @@ export default function LoginScreen() {
             />
           </View>
         </View>
+      </View>
 
+      {/* White background bottom section */}
+      <View style={styles.bottomContainer}>
         <Link href="/forgotPassword" asChild>
           <TouchableOpacity>
             <Text style={styles.forgotPassword}>Forgot Password?</Text>
@@ -91,11 +94,26 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  contentContainer: {
-    flex: 1,
+  gradientContainer: {
+    flex: 0.7,
+  },
+  topContentContainer: {
+    flex: 0.8, // reduced from 1
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    paddingLeft: 30,
+    paddingRight: 30,
+    paddingTop: 30,
+  },
+  bottomContainer: {
+    flex: 0.4, // increased from 0.3
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 30,
+    paddingHorizontal: 20,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
   },
   logoContainer: {
     alignItems: 'center',
@@ -138,7 +156,7 @@ const styles = StyleSheet.create({
   forgotPassword: {
     alignSelf: 'center',
     marginBottom: 20,
-    color: '#333',
+    color: '#4CAF50',
   },
   signInButton: {
     backgroundColor: '#4CAF50',
@@ -159,11 +177,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   signUpText: {
-    color: '#333',
+    color: '#666',
   },
   signUpLink: {
     fontWeight: 'bold',
-    color: '#0B5E42',
+    color: '#4CAF50',
   },
   errorText: {
     color: 'red',
