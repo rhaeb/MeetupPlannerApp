@@ -238,7 +238,13 @@ export default function EventDetailScreen() {
                 <Pressable
                   key={attendee.prof_id || index}
                   style={styles.attendeeItem}
-                  onPress={() => router.push(`/friends/${attendee.prof_id}`)}
+                  onPress={() => {
+                    if (attendee.prof_id === profile?.prof_id) {
+                      router.push('/tabs/profile');
+                    } else {
+                      router.push(`/friends/${attendee.prof_id}`);
+                    }
+                  }}
                 >
                   <View style={styles.attendeeImageContainer}>
                     {attendee.photo ? (
