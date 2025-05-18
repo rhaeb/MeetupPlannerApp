@@ -15,14 +15,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../../hooks/useAuth";
 import { Event } from "../../../types";
-import { eventController } from "../../../controllers/eventController";
+import { useEvents } from "../../../contexts/EventsContext"; // <-- Use EventsContext
 
 export default function EventsScreen() {
   const router = useRouter();
   const { profile, loading: authLoading } = useAuth();
+  const { events: allEvents, loading: eventsLoading } = useEvents(); // <-- Use events from context
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const [fadeAnim] = useState(new Animated.Value(0.3));
 
@@ -42,52 +42,38 @@ export default function EventsScreen() {
         }),
       ])
     ).start();
+  }, []);
 
-    fetchEvents();
-  }, [profile, authLoading]);
-
-  const fetchEvents = async () => {
-    if (!profile) {
-      setLoading(false);
+  // Filter and sort events from context
+  useEffect(() => {
+    if (!profile || !allEvents) {
+      setUpcomingEvents([]);
+      setPastEvents([]);
       return;
     }
 
-    try {
-      setLoading(true);
-      const { data, error } = await eventController.getAttendingEvents(profile.prof_id);
+    const now = new Date();
 
-      if (error) {
-        console.error("Error fetching events:", error);
-      } else if (data) {
-        const now = new Date();
-        
-        // Filter and sort upcoming events
-        const upcoming = data
-          .filter((event) => new Date(event.date_start) >= now)
-          .sort(
-            (a, b) =>
-              new Date(a.date_start).getTime() -
-              new Date(b.date_start).getTime()
-          );
-        
-        // Filter and sort past events
-        const past = data
-          .filter((event) => new Date(event.date_start) < now)
-          .sort(
-            (a, b) =>
-              new Date(b.date_start).getTime() -
-              new Date(a.date_start).getTime()
-          );
-        
-        setUpcomingEvents(upcoming);
-        setPastEvents(past);
-      }
-    } catch (error) {
-      console.error("Error in fetchEvents:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    // Filter and sort upcoming events
+    const upcoming = allEvents
+      .filter((event) => new Date(event.date_start) >= now)
+      .sort(
+        (a, b) =>
+          new Date(a.date_start).getTime() -
+          new Date(b.date_start).getTime()
+      );
+
+    // Filter and sort past events
+    const past = allEvents
+      .filter((event) => new Date(event.date_start) < now)
+      .sort(
+        (a, b) =>
+          new Date(b.date_start).getTime() - new Date(a.date_start).getTime()
+      );
+
+    setUpcomingEvents(upcoming);
+    setPastEvents(past);
+  }, [profile, allEvents]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -243,9 +229,7 @@ export default function EventsScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {authLoading || loading ? renderLoadingState() : renderEvents()}
-        
-        {/* Add some space at the bottom */}
+        {authLoading || eventsLoading ? renderLoadingState() : renderEvents()}
         <View style={{ height: 20 }} />
       </ScrollView>
     </SafeAreaView>

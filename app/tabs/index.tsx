@@ -12,62 +12,46 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Event } from "../../types";
 import { useAuth } from "../../hooks/useAuth";
-import { eventController } from "../../controllers/eventController";
+import { useEvents } from "../../contexts/EventsContext"; // <-- Use EventsContext
 
 export default function HomeScreen() {
   const router = useRouter();
   const { profile, loading: authLoading } = useAuth();
+  const { events: allEvents, loading: eventsLoading } = useEvents(); // <-- Use events from context
+
   const [events, setEvents] = useState<Event[]>([]);
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  // Fetch events for the logged-in user
+  // Filter and sort events from context
   useEffect(() => {
-    const fetchEvents = async () => {
-      if (!profile) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const { data: userEvents, error } = await eventController.getAttendingEvents(profile.prof_id);
-
-        if (error) {
-          console.error("Error fetching events:", error);
-        } else if (userEvents) {
-          const now = new Date();
-
-          // Filter and sort upcoming events
-          const upcoming = userEvents
-            .filter((event) => new Date(event.date_start) >= now)
-            .sort(
-              (a, b) =>
-                new Date(a.date_start).getTime() -
-                new Date(b.date_start).getTime()
-            );
-
-          // Filter and sort past events
-          const past = userEvents
-            .filter((event) => new Date(event.date_start) < now)
-            .sort(
-              (a, b) =>
-                new Date(b.date_start).getTime() - new Date(a.date_start).getTime()
-            );
-
-          setEvents(upcoming);
-          setPastEvents(past);
-        }
-      } catch (error) {
-        console.error("Error fetching events:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (!authLoading) {
-      fetchEvents();
+    if (!profile || !allEvents) {
+      setEvents([]);
+      setPastEvents([]);
+      return;
     }
-  }, [profile, authLoading]);
+
+    const now = new Date();
+
+    // Filter and sort upcoming events
+    const upcoming = allEvents
+      .filter((event) => new Date(event.date_start) >= now)
+      .sort(
+        (a, b) =>
+          new Date(a.date_start).getTime() -
+          new Date(b.date_start).getTime()
+      );
+
+    // Filter and sort past events
+    const past = allEvents
+      .filter((event) => new Date(event.date_start) < now)
+      .sort(
+        (a, b) =>
+          new Date(b.date_start).getTime() - new Date(a.date_start).getTime()
+      );
+
+    setEvents(upcoming);
+    setPastEvents(past);
+  }, [profile, allEvents]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -93,7 +77,7 @@ export default function HomeScreen() {
     return event.attendees_count ?? 1;
   };
 
-  if (authLoading || loading) {
+  if (authLoading || eventsLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4CAF50" />

@@ -17,6 +17,7 @@ import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { eventController } from "../../controllers/eventController";
 import { Event, Profile } from "../../types";
 import { useAuth } from "../../hooks/useAuth";
+import { useEvents } from "../../contexts/EventsContext";
 
 export default function EventDetailScreen() {
   const router = useRouter();
@@ -169,12 +170,15 @@ export default function EventDetailScreen() {
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Event Details</Text>
-        <TouchableOpacity
-          style={styles.shareButton}
-          onPress={() => router.push(`/events/edit/${id}`)} // Update this path to your edit screen route
-        >
-          <Ionicons name="create-outline" size={24} color="#333" />
-        </TouchableOpacity>
+        {/* Only show edit button if current user is the host */}
+        {event?.hoster_id === profile?.prof_id && (
+          <TouchableOpacity
+            style={styles.shareButton}
+            onPress={() => router.push(`/events/edit/${id}`)}
+          >
+            <Ionicons name="create-outline" size={24} color="#333" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -371,9 +375,12 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   headerTitle: {
+    flex: 1, // take up remaining space
     fontSize: 18,
     fontWeight: "600",
     color: "#333",
+    textAlign: "left",
+    marginLeft: 10, // add some space from the close button
   },
   shareButton: {
     padding: 4,
