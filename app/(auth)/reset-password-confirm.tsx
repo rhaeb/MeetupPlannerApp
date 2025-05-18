@@ -55,7 +55,7 @@ export default function ResetPasswordConfirmScreen() {
   return (
     <View style={styles.container}>
       <Image source={require('../assets/logo.png')} style={styles.logo} />
-      <Text style={styles.title}>Tara</Text>
+      {/* <Text style={styles.title}>Tara</Text> */}
       <Text style={styles.subtitle}>Reset Password</Text>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -132,8 +132,8 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   logo: {
-    width: 100,
-    height: 100,
+    width: 200,
+    height: 200,
     resizeMode: 'contain',
     marginBottom: 10,
   },

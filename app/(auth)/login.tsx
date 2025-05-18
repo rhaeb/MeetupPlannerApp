@@ -26,10 +26,12 @@ export default function LoginScreen() {
     router.replace('/tabs');
   };
 
+  const goToSignup = () => router.replace('/signup');
+
   return (
     <View style={styles.container}>
       <Image source={require('../assets/logo.png')} style={styles.logo} />
-      <Text style={styles.title}>Tara</Text>
+      {/* <Text style={styles.title}>Tara</Text> */}
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -86,9 +88,9 @@ export default function LoginScreen() {
 
       <View style={{ flexDirection: 'row' }}>
         <Text style={styles.signUpText}>Don't have an account? </Text>
-        <Link href="/signup" asChild>
+        <TouchableOpacity onPress={goToSignup}>
           <Text style={styles.signUpLink}>Sign Up Now!</Text>
-        </Link>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -103,8 +105,8 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   logo: {
-    width: 100,
-    height: 100,
+    width: 200,
+    height: 200,
     resizeMode: 'contain',
     marginBottom: 10,
   },

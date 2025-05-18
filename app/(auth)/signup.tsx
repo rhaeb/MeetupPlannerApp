@@ -47,7 +47,7 @@ export default function SignupScreen() {
       }
 
       // Redirect to the main page after successful signup
-      router.push('/tabs/index');
+      router.replace('/tabs/index');
     } catch (err) {
       console.error('Signup error:', err);
       setError('An unexpected error occurred. Please try again.');
@@ -59,71 +59,74 @@ export default function SignupScreen() {
     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     style={{ flex: 1 }}
   >
-    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-    <View style={styles.container}>
-      <Image source={require('../assets/logo.png')} style={styles.logo} />
-      <Text style={styles.title}>Tara</Text>
+    <ScrollView 
+      contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} // Center content
+      keyboardShouldPersistTaps="handled"
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.container}>
+          <Image source={require('../assets/logo.png')} style={styles.logo} />
+          {/* <Text style={styles.title}>Tara</Text> */}
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      <View style={styles.inputContainer}>
-        <View style={styles.inputWrapper}>
-          <FontAwesome name="user" size={18} color="black" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Username"
-            placeholderTextColor="#000"
-            value={username}
-            onChangeText={setUsername}
-          />
-        </View>
-        <View style={styles.inputWrapper}>
-          <MaterialIcons name="email" size={20} color="black" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#000"
-            value={email}
-            onChangeText={setEmail}
-          />
-        </View>
-        <View style={styles.inputWrapper}>
-          <MaterialIcons name="lock" size={20} color="black" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            secureTextEntry
-            placeholderTextColor="#000"
-            value={password}
-            onChangeText={setPassword}
-          />
-        </View>
-        <View style={styles.inputWrapper}>
-          <MaterialIcons name="lock-outline" size={20} color="black" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Confirm Password"
-            secureTextEntry
-            placeholderTextColor="#000"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-          />
-        </View>
-      </View>
+          <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <FontAwesome name="user" size={18} color="black" style={styles.icon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Username"
+                placeholderTextColor="#000"
+                value={username}
+                onChangeText={setUsername}
+              />
+            </View>
+            <View style={styles.inputWrapper}>
+              <MaterialIcons name="email" size={20} color="black" style={styles.icon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Email"
+                placeholderTextColor="#000"
+                value={email}
+                onChangeText={setEmail}
+              />
+            </View>
+            <View style={styles.inputWrapper}>
+              <MaterialIcons name="lock" size={20} color="black" style={styles.icon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                secureTextEntry
+                placeholderTextColor="#000"
+                value={password}
+                onChangeText={setPassword}
+              />
+            </View>
+            <View style={styles.inputWrapper}>
+              <MaterialIcons name="lock-outline" size={20} color="black" style={styles.icon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Confirm Password"
+                secureTextEntry
+                placeholderTextColor="#000"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+              />
+            </View>
+          </View>
 
-      <TouchableOpacity style={styles.signInButton} onPress={handleSignup}>
-        <Text style={styles.signInText}>Sign Up</Text>
-      </TouchableOpacity>
+          <TouchableOpacity style={styles.signInButton} onPress={handleSignup}>
+            <Text style={styles.signInText}>Sign Up</Text>
+          </TouchableOpacity>
 
-      <Text style={styles.signUpText}>
-        Already have an account?{' '}
-        <Link href="/login">
-          <Text style={styles.signUpLink}>Sign In</Text>
-        </Link>
-      </Text>
-    </View>
-    </TouchableWithoutFeedback>
+          <Text style={styles.signUpText}>
+            Already have an account?{' '}
+            <Link href="/login" asChild>
+              <Text style={styles.signUpLink}>Sign In</Text>
+            </Link>
+          </Text>
+        </View>
+      </TouchableWithoutFeedback>
     </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -139,8 +142,8 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   logo: {
-    width: 100,
-    height: 100,
+    width: 200,
+    height: 200,
     resizeMode: 'contain',
     marginBottom: 10,
   },
