@@ -8,11 +8,11 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { supabase } from "../../lib/supabase";
 import { Event } from "../../types";
 import { useAuth } from "../../hooks/useAuth";
+import { eventController } from "../../controllers/eventController";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -30,51 +30,30 @@ export default function HomeScreen() {
       }
 
       try {
-        // Fetch events for the logged-in user's profile
-        const { data: userEvents, error } = await supabase
-          .from("attend")
-          .select(`
-            event:event_id (
-              event_id,
-              name,
-              description,
-              date_start,
-              date_end,
-              time,
-              address,
-              picture,
-              status,
-              rating,
-              hoster_id
-            )
-          `)
-          .eq("prof_id", profile.prof_id);
+        const { data: userEvents, error } = await eventController.getAttendingEvents(profile.prof_id);
 
         if (error) {
           console.error("Error fetching events:", error);
         } else if (userEvents) {
           const now = new Date();
-          
+
           // Filter and sort upcoming events
           const upcoming = userEvents
-            .map((item) => item.event)
             .filter((event) => new Date(event.date_start) >= now)
             .sort(
               (a, b) =>
                 new Date(a.date_start).getTime() -
                 new Date(b.date_start).getTime()
             );
-          
+
           // Filter and sort past events
           const past = userEvents
-            .map((item) => item.event)
             .filter((event) => new Date(event.date_start) < now)
             .sort(
               (a, b) =>
-                new Date(b.date_start).getTime() -
-                new Date(a.date_start).getTime()
+                new Date(b.date_start).getTime() - new Date(a.date_start).getTime()
             );
-          
+
           setEvents(upcoming);
           setPastEvents(past);
         }
@@ -102,18 +81,16 @@ export default function HomeScreen() {
   const formatDateRange = (startDate, endDate) => {
     const start = new Date(startDate);
     const end = new Date(endDate);
-    
+
     if (start.toDateString() === end.toDateString()) {
       return formatDate(startDate);
     }
-    
+
     return `${start.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}-${end.getDate()}, ${end.getFullYear()}`;
   };
 
   const getAttendeeCount = (event) => {
-    // This is a placeholder. In a real app, you would fetch the actual count
-    // For now, we'll return a random number between 2 and 5
-    return Math.floor(Math.random() * 4) + 2;
+    return event.attendees_count ?? 1;
   };
 
   if (authLoading || loading) {
@@ -142,27 +119,6 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          {/* Navigate to All Events */}
-          <TouchableOpacity
-            style={styles.quickAction}
-            onPress={() => router.push("/tabs/events")}
-          >
-            <Ionicons name="calendar-outline" size={30} color="#4CAF50" />
-            <Text style={styles.quickActionText}>All Events</Text>
-          </TouchableOpacity>
-
-          {/* Navigate to All Friends */}
-          <TouchableOpacity
-            style={styles.quickAction}
-            onPress={() => router.push("/tabs/friends")}
-          >
-            <Ionicons name="people-outline" size={30} color="#4CAF50" />
-            <Text style={styles.quickActionText}>All Friends</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Upcoming Events */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Upcoming Events</Text>
@@ -213,7 +169,7 @@ export default function HomeScreen() {
                         : styles.statusConfirmed,
                     ]}
                   >
-                    {event.status === "Planning" ? "Planning" : "Confirmed"}
+                    {event.status === "planned" || event.status === "Planning" ? "Planning" : "Confirmed"}
                   </Text>
                 </View>
               </View>

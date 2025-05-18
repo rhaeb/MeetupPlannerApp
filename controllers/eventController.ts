@@ -110,14 +110,37 @@ export const eventController = {
         .select(`
           event:event_id (
             *,
-            date_start
+            date_start,
+            event_id
           )
         `)
         .eq('prof_id', profId);
 
       if (error) throw error;
 
-      const events = data.map(item => item.event).sort((a, b) => {
+      // Get all event IDs
+      const eventIds = data.map(item => item.event.event_id);
+
+      // Fetch attendee counts for all events in one query
+      const { data: countsData, error: countsError } = await supabase
+        .from('attend')
+        .select('event_id', { count: 'exact', head: false })
+        .in('event_id', eventIds);
+
+      if (countsError) throw countsError;
+
+      // Map event_id to count
+      const countsMap = {};
+      eventIds.forEach(eventId => {
+        // Count how many times this event_id appears in countsData
+        countsMap[eventId] = countsData.filter(row => row.event_id === eventId).length;
+      });
+
+      // Attach attendee count to each event
+      const events = data.map(item => ({
+        ...item.event,
+        attendees_count: countsMap[item.event.event_id] || 1
+      })).sort((a, b) => {
         return new Date(a.date_start).getTime() - new Date(b.date_start).getTime();
       });
 

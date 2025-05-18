@@ -98,27 +98,8 @@ export default function EventsScreen() {
     });
   };
 
-  const getEventStatusBadge = (event) => {
-    if (event.status === "active") {
-      return (
-        <View style={[styles.statusBadge, styles.statusConfirmed]}>
-          <Text style={styles.statusText}>Confirmed</Text>
-        </View>
-      );
-    } else if (event.status === "live") {
-      return (
-        <View style={[styles.statusBadge, styles.statusLive]}>
-          <Text style={styles.statusText}>Live now</Text>
-        </View>
-      );
-    } else if (event.status === "planned") {
-      return (
-        <View style={[styles.statusBadge, styles.statusPlanning]}>
-          <Text style={styles.statusText}>Planning</Text>
-        </View>
-      );
-    }
-    return null;
+  const getAttendeeCount = (event) => {
+    return event.attendees_count ?? event.attendeesCount ?? event.attendees?.length ?? 1;
   };
 
   const renderSkeletonEvent = (key) => (
@@ -169,7 +150,9 @@ export default function EventsScreen() {
         style={styles.eventImage}
       />
       <View style={styles.eventContent}>
-        <Text style={styles.eventTitle}>{event.name}</Text>
+        <View style={styles.eventRow}>
+          <Text style={styles.eventTitle}>{event.name}</Text>
+        </View>
         <View style={styles.eventDetails}>
           <View style={styles.eventDetailRow}>
             <Ionicons name="calendar-outline" size={14} color="#888" style={styles.eventIcon} />
@@ -182,12 +165,25 @@ export default function EventsScreen() {
           <View style={styles.eventDetailRow}>
             <Ionicons name="people-outline" size={14} color="#888" style={styles.eventIcon} />
             <Text style={styles.eventAttendees}>
-              {/* This would ideally come from the API */}
-              {Math.floor(Math.random() * 4) + 2} people
+              {getAttendeeCount(event)} people
             </Text>
           </View>
         </View>
-        {getEventStatusBadge(event)}
+        {/* Status badge - Updated to match home screen style */}
+        {activeTab === 'upcoming' && (
+          <View style={styles.statusContainer}>
+            <Text
+              style={[
+                styles.eventStatus,
+                event.status === "planned" || event.status === "Planning"
+                  ? styles.statusPlanning
+                  : styles.statusConfirmed,
+              ]}
+            >
+              {event.status === "planned" || event.status === "Planning" ? "Planning" : "Confirmed"}
+            </Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -217,8 +213,9 @@ export default function EventsScreen() {
     <SafeAreaView style={styles.container} edges={["right", "left", "bottom"]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Manage your hangouts</Text>
+        {/* Updated New Event button to match home screen */}
         <TouchableOpacity 
-          style={styles.newEventButton}
+          style={styles.newEventBtn} 
           onPress={() => router.push("/create-event")}
         >
           <Ionicons name="add" size={18} color="#fff" />
@@ -272,18 +269,19 @@ const styles = StyleSheet.create({
     fontWeight: "500", 
     color: "#333" 
   },
-  newEventButton: {
+  // Updated New Event button styles to match home screen
+  newEventBtn: {
     backgroundColor: "#4CAF50",
-    flexDirection: "row",
-    alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 4,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
   },
-  newEventText: {
-    color: "#fff",
+  newEventText: { 
+    color: "#fff", 
     fontWeight: "500",
-    marginLeft: 4,
+    marginLeft: 4
   },
   tabsContainer: {
     flexDirection: "row",
@@ -327,6 +325,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 3,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
   },
   eventImage: {
     width: 70,
@@ -334,61 +334,65 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 12,
   },
-  eventContent: {
+  eventContent: { 
     flex: 1,
-    position: "relative",
+    justifyContent: "space-between"
   },
-  eventTitle: {
-    fontSize: 16,
-    fontWeight: "600",
+  eventRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  eventTitle: { 
+    fontSize: 16, 
+    fontWeight: "600", 
     color: "#333",
-    marginBottom: 8,
-    paddingRight: 80, // Make room for the status badge
+    marginBottom: 4
   },
   eventDetails: {
-    marginTop: 4,
+    marginTop: 2,
   },
   eventDetailRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 4,
+    marginBottom: 2,
   },
   eventIcon: {
     marginRight: 4,
   },
-  eventDate: {
-    color: "#666",
-    fontSize: 12,
+  eventDate: { 
+    color: "#666", 
+    fontSize: 12
   },
-  eventLocation: {
-    color: "#666",
-    fontSize: 12,
+  eventLocation: { 
+    color: "#666", 
+    fontSize: 12
   },
   eventAttendees: {
     color: "#666",
-    fontSize: 12,
+    fontSize: 12
   },
-  statusBadge: {
+  // Updated status styles to match home screen
+  statusContainer: {
     position: "absolute",
     top: 0,
     right: 0,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
   },
-  statusConfirmed: {
-    backgroundColor: "#dcedc8",
-  },
-  statusLive: {
-    backgroundColor: "#ffab40",
-  },
-  statusPlanning: {
-    backgroundColor: "#fff3e0",
-  },
-  statusText: {
+  eventStatus: {
     fontSize: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    overflow: "hidden",
     fontWeight: "500",
-    color: "#333",
+  },
+  statusConfirmed: { 
+    backgroundColor: "#dcedc8", 
+    color: "#33691e" 
+  },
+  statusPlanning: { 
+    backgroundColor: "#fff3e0", 
+    color: "#ef6c00" 
   },
   emptyStateContainer: {
     alignItems: "center",

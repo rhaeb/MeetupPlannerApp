@@ -227,7 +227,7 @@ export default function CreateEventScreen() {
         time: startDate.toISOString().substring(11, 19), // "HH:mm:ss" format
         address,
         picture: selectedImage || "",
-        status: "planned",
+        status: "Planning",
         rating: 0,
         hoster_id: profile.prof_id,
       }
