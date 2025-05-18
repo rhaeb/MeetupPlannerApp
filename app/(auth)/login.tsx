@@ -104,6 +104,8 @@ const styles = StyleSheet.create({
     paddingLeft: 30,
     paddingRight: 30,
     paddingTop: 30,
+    paddingBottom: 0,
+    marginBottom: -40
   },
   bottomContainer: {
     flex: 0.4, // increased from 0.3
