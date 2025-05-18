@@ -236,7 +236,7 @@ export default function HomeScreen() {
             <TouchableOpacity
               key={event.event_id}
               style={styles.eventCard}
-              onPress={() => router.push(`/event/${event.event_id}`)}
+              onPress={() => router.push(`/events/${event.event_id}`)}
             >
               <Image
                 source={{

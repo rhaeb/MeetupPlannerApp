@@ -49,7 +49,13 @@ export default function EventDetailScreen() {
           return;
         }
 
-        setAttendees(attendeesData?.attendees || []);
+        const allAttendees = [
+          ...(attendeesData?.attendees?.map(a => ({ ...a, status: 'going' })) || []),
+          ...(attendeesData?.maybes?.map(a => ({ ...a, status: 'maybe' })) || []),
+          ...(attendeesData?.notGoing?.map(a => ({ ...a, status: 'not_going' })) || []),
+          ...(attendeesData?.invited?.map(a => ({ ...a, status: 'invited' })) || []),
+        ];
+        setAttendees(allAttendees);
 
         // Check user's attendance status
         if (profile && attendeesData) {
@@ -163,8 +169,11 @@ export default function EventDetailScreen() {
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Event Details</Text>
-        <TouchableOpacity style={styles.shareButton}>
-          <Ionicons name="share-outline" size={24} color="#333" />
+        <TouchableOpacity
+          style={styles.shareButton}
+          onPress={() => router.push(`/events/edit/${id}`)} // Update this path to your edit screen route
+        >
+          <Ionicons name="create-outline" size={24} color="#333" />
         </TouchableOpacity>
       </View>
 
@@ -226,7 +235,11 @@ export default function EventDetailScreen() {
           >
             {attendees.length > 0 ? (
               attendees.slice(0, 4).map((attendee, index) => (
-                <View key={attendee.prof_id || index} style={styles.attendeeItem}>
+                <Pressable
+                  key={attendee.prof_id || index}
+                  style={styles.attendeeItem}
+                  onPress={() => router.push(`/friends/${attendee.prof_id}`)}
+                >
                   <View style={styles.attendeeImageContainer}>
                     {attendee.photo ? (
                       <Image source={{ uri: attendee.photo }} style={styles.attendeeImage} />
@@ -240,18 +253,17 @@ export default function EventDetailScreen() {
                   </View>
                   <Text style={styles.attendeeName}>{attendee.name}</Text>
                   <View style={[
-                    styles.attendeeStatus, 
-                    index === 0 ? styles.statusMaybe : 
-                    index === 2 ? styles.statusInvited : 
-                    styles.statusGoing
+                    styles.attendeeStatus,
+                    attendee.status === 'going' ? styles.statusGoing :
+                    attendee.status === 'maybe' ? styles.statusMaybe :
+                    attendee.status === 'invited' ? styles.statusInvited :
+                    styles.statusNotGoing
                   ]}>
                     <Text style={styles.attendeeStatusText}>
-                      {index === 0 ? "maybe" : 
-                       index === 2 ? "invited" : 
-                       "going"}
+                      {attendee.status}
                     </Text>
                   </View>
-                </View>
+                </Pressable>
               ))
             ) : (
               <Text style={styles.noAttendeesText}>No attendees yet</Text>
@@ -499,6 +511,9 @@ const styles = StyleSheet.create({
   },
   statusInvited: {
     backgroundColor: "#e0f7fa",
+  },
+  statusNotGoing: {
+    backgroundColor: "#ffebee",
   },
   attendeeStatusText: {
     fontSize: 12,

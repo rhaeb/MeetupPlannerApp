@@ -262,7 +262,7 @@ export const eventController = {
   },
 
   // Get attendees for an event
-  async getEventAttendees(eventId: string): Promise<{ error: any; data: { attendees: Profile[], maybes: Profile[], notGoing: Profile[] } | null }> {
+  async getEventAttendees(eventId: string): Promise<{ error: any; data: { attendees: Profile[], maybes: Profile[], notGoing: Profile[], invited: Profile[] } | null }> {
     try {
       const { data, error } = await supabase
         .from('attend')
@@ -275,12 +275,14 @@ export const eventController = {
       const attendees = data.filter(a => a.status === 'going').map(a => a.profile);
       const maybes = data.filter(a => a.status === 'maybe').map(a => a.profile);
       const notGoing = data.filter(a => a.status === 'not_going').map(a => a.profile);
+      const invited = data.filter(a => a.status === 'invited').map(a => a.profile);
 
       return { 
         data: { 
           attendees, 
           maybes, 
-          notGoing 
+          notGoing,
+          invited
         }, 
         error: null 
       };
