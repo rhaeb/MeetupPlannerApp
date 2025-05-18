@@ -10,6 +10,7 @@ import * as ImagePicker from "expo-image-picker"
 import { eventController } from "../../controllers/eventController"
 import { useAuth } from "../../hooks/useAuth"
 import { supabase } from "../../lib/supabase"
+import { useEvents } from "../../contexts/EventsContext";
 import type { Profile } from "../../types"
 
 // Sample event images
@@ -22,6 +23,7 @@ const sampleImages = [
 export default function CreateEventScreen() {
   const router = useRouter()
   const { profile } = useAuth()
+  const { addEventToList, refreshEvents } = useEvents();
 
   // Form state
   const [name, setName] = useState("")
@@ -250,6 +252,16 @@ export default function CreateEventScreen() {
         const { error: attendeeError } = await eventController.addAttendees(event.event_id, profIds)
         if (attendeeError) {
           console.error("Error adding attendees:", attendeeError)
+        }
+      }
+
+      // Add to EventsContext for instant sync
+      if (event) {
+        const { data: freshEvent } = await eventController.getEventById(event.event_id);
+        if (freshEvent) {
+          addEventToList(freshEvent);
+        } else {
+          addEventToList(event);
         }
       }
 

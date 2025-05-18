@@ -216,7 +216,7 @@ export default function EventsScreen() {
         {/* Updated New Event button to match home screen */}
         <TouchableOpacity 
           style={styles.newEventBtn} 
-          onPress={() => router.push("/create-event")}
+          onPress={() => router.push("/events/create")}
         >
           <Ionicons name="add" size={18} color="#fff" />
           <Text style={styles.newEventText}>New Event</Text>

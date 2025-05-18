@@ -70,6 +70,15 @@ export const eventController = {
   // Delete event
   async deleteEvent(eventId: string): Promise<{ error: any }> {
     try {
+      // First, delete all attend rows for this event
+      const { error: attendError } = await supabase
+        .from('attend')
+        .delete()
+        .eq('event_id', eventId);
+
+      if (attendError) throw attendError;
+
+      // Then, delete the event itself
       const { error } = await supabase
         .from('event')
         .delete()
