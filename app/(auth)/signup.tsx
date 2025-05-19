@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { FontAwesome, MaterialIcons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { useRouter, Link } from 'expo-router';  // Import Link from expo-router
+import { useRouter, Link } from 'expo-router';
 import { KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -38,18 +38,24 @@ export default function SignupScreen() {
         return;
       }
 
-      // Insert a profile for the new user
-      const { error: profileError } = await supabase
-        .from('profile') // Ensure the table name is correct
+      // Insert a profile for the new user (optional, if not handled in ProfileContext)
+      await supabase
+        .from('profile')
         .insert([{ user_id: user.id, username }]);
 
-      if (profileError) {
-        setError(`Profile creation failed: ${profileError.message}`);
+      // Immediately log the user in after signup
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (loginError) {
+        setError(loginError.message);
         return;
       }
 
-      // Redirect to the main page after successful signup
-      router.replace('/tabs/index');
+      // Redirect to home/tabs after successful login
+      router.replace('/tabs');
     } catch (err) {
       console.error('Signup error:', err);
       setError('An unexpected error occurred. Please try again.');

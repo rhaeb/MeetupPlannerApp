@@ -21,8 +21,12 @@ export function ProfileProvider({ children }) {
         .from("profile")
         .select("*")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle(); // <= safer alternative
       if (!error) setProfile(data);
+      if (error && error.code !== "PGRST116") {
+        console.error("Profile fetch error:", error);
+      }
+      setProfile(data);
       setLoading(false);
     };
     fetchProfile();

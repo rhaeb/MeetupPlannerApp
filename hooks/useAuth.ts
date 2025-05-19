@@ -57,6 +57,8 @@ export function useAuth() {
             .eq('user_id', session.user.id)
             .single();
 
+            console.log('Fetching profile for user_id:', session.user.id);
+
           if (profileError) {
             console.error('Error fetching profile:', profileError);
           } else {
@@ -99,7 +101,7 @@ export function useAuth() {
         .from('profile')
         .select('*')
         .eq('user_id', session.user.id)
-        .single();
+        .maybeSingle();
 
       if (profileError) {
         console.error('Error fetching profile:', profileError);
