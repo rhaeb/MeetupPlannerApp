@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { notificationController } from '../../controllers/notificationController';
 import { userController } from '../../controllers/userController';
 import { useProfile } from "../../contexts/ProfileContext";
+import { useAuth } from "../../hooks/useAuth";
 
 interface AppHeaderProps {
   onNotificationPress?: () => void;
@@ -14,6 +15,7 @@ interface AppHeaderProps {
 }
 
 export default function AppHeader({ onNotificationPress, onProfilePress }: AppHeaderProps) {
+  const { user } = useAuth();
   const { profile } = useProfile(); // Use profile from context
   const [hasNotifications, setHasNotifications] = useState(false);
   const [fontsLoaded] = useFonts({
@@ -104,7 +106,10 @@ export default function AppHeader({ onNotificationPress, onProfilePress }: AppHe
             />
           ) : (
             <View style={styles.profilePlaceholder}>
-              <HelpCircle color="#fff" size={20} />
+              {/* <HelpCircle color="#fff" size={20} /> */}
+              <Text style={styles.profileImageText}>
+                                {profile?.name ? profile.name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase()}
+                              </Text>
             </View>
           )}
         </TouchableOpacity>
@@ -170,5 +175,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#0B5E42',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  profileImageText: {
+    fontSize: 10,
+    fontWeight: "bold",
+    color: "#fff"
   },
 });

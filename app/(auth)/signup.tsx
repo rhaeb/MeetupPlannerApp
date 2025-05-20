@@ -5,8 +5,10 @@ import { supabase } from '../../lib/supabase';
 import { useRouter, Link } from 'expo-router';
 import { KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ActivityIndicator } from 'react-native';
 
 export default function SignupScreen() {
+  const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,7 +21,7 @@ export default function SignupScreen() {
       setError("Passwords don't match!");
       return;
     }
-
+    setLoading(true);
     try {
       // Sign up the user
       const { data: signupData, error: signupError } = await supabase.auth.signUp({
@@ -53,13 +55,31 @@ export default function SignupScreen() {
         setError(loginError.message);
         return;
       }
-
+      
+      // Wait for the profile row to exist before redirecting
+    let profileExists = false;
+    let attempts = 0;
+    while (!profileExists && attempts < 10) {
+      const { data: profileData } = await supabase
+        .from('profile')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (profileData) {
+        profileExists = true;
+      } else {
+        await new Promise(res => setTimeout(res, 500)); // wait 0.5s
+        attempts++;
+      }
+    }
       // Redirect to home/tabs after successful login
       router.replace('/tabs');
     } catch (err) {
       console.error('Signup error:', err);
       setError('An unexpected error occurred. Please try again.');
-    }
+    }finally {
+    setLoading(false); // Stop loading
+  }
   };
 
   return (
@@ -67,6 +87,12 @@ export default function SignupScreen() {
       colors={['#a5d6a7', '#57C785', '#AFED53']}
       style={{ flex: 1 }}
     >
+       {loading ? (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ marginBottom: 16, color: '#2e7d32', fontSize: 18 }}>Creating your account...</Text>
+        <ActivityIndicator size="large" color="#66bb6a" />
+      </View>
+    ) : (
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -149,6 +175,7 @@ export default function SignupScreen() {
           </TouchableWithoutFeedback>
         </ScrollView>
       </KeyboardAvoidingView>
+    )}
     </LinearGradient>
   );
 }
