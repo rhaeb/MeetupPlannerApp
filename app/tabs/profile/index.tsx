@@ -14,6 +14,8 @@ import { Ionicons, MaterialIcons, Feather } from "@expo/vector-icons";
 import { useAuth } from "../../../hooks/useAuth";
 import { userController } from "../../../controllers/userController";
 import { notificationController } from "../../../controllers/notificationController";
+import { eventController } from "../../../controllers/eventController";
+import { friendController } from "../../../controllers/friendController";
 import AppHeader from "../../components/AppHeader";
 import { useProfile } from "../../../contexts/ProfileContext"; // Adjust path
 
@@ -34,9 +36,29 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (profile) {
+      fetchStats();
       fetchNotifications();
     }
   }, [profile]);
+
+  const fetchStats = async () => {
+    try {
+      // Get events attended
+      const { data: attendedEvents } = await eventController.getAttendingEvents(profile.prof_id);
+      // Get friends count
+      const { data: friendsData } = await friendController.getFriends(profile.prof_id);
+      // Get hosted events
+      const { data: hostedEvents } = await eventController.getHostedEvents(profile.prof_id);
+
+      setStats({
+        attended: attendedEvents?.length || 0,
+        friends: friendsData?.friends.length || 0,
+        hosted: hostedEvents?.length || 0,
+      });
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+    }
+  };
 
   const fetchNotifications = async () => {
     if (!profile) return;

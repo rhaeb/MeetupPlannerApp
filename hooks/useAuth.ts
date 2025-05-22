@@ -27,10 +27,12 @@ export function useAuth() {
             .from('profile')
             .select('*')
             .eq('user_id', session.user.id)
-            .single();
+            .maybeSingle();
 
           if (profileError) {
+            // Only log the error, do not set user/profile to null
             console.error('Error fetching profile:', profileError);
+            // Optionally set a separate error state
           } else {
             setProfile(profileData);
           }

@@ -60,13 +60,17 @@ export default function ProfileScreen() {
       ]),
     ).start()
 
-    fetchProfileData()
+    // Reset error and set loading when starting to fetch
+    if (id && currentUserProfile) {
+      setError(null)
+      setLoading(true)
+      fetchProfileData()
+    }
   }, [id, currentUserProfile])
 
   const fetchProfileData = async () => {
+    // Don't set error if id or currentUserProfile is missing, just return
     if (!id || !currentUserProfile) {
-      setError("Profile ID is missing or you're not logged in")
-      setLoading(false)
       return
     }
 
@@ -367,7 +371,11 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {loading ? renderLoadingState() : error ? renderErrorState() : renderProfileContent()}
+      {loading
+        ? renderLoadingState()
+        : error && !loading
+          ? renderErrorState()
+          : renderProfileContent()}
     </SafeAreaView>
   )
 }

@@ -10,49 +10,61 @@ export function ProfileProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-  let retryTimeout: NodeJS.Timeout | null = null;
-
-  const fetchProfile = async (retry = false) => {
-    if (!user) {
-      setProfile(null);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("profile")
-      .select("*")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    // if (error && error.code !== "PGRST116") {
-    //   console.error("Profile fetch error:", error);
-    // }
-
-    setProfile(data);
-    setLoading(false);
-
-    // If just signed up and profile is not found, retry after a short delay
-    if (!data && !retry) {
-      retryTimeout = setTimeout(() => fetchProfile(true), 1000);
-    }
-  };
-
-  fetchProfile();
-
-  const { data: authListener } = supabase.auth.onAuthStateChange(
-    (event) => {
-      if (event === "SIGNED_OUT") {
+    const fetchProfile = async () => {
+      if (!user) {
         setProfile(null);
+        setLoading(false);
+        return;
       }
-    }
-  );
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("profile")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle(); // <= safer alternative
+      if (!error) setProfile(data);
+      if (error && error.code !== "PGRST116") {
+        console.error("Profile fetch error:", error);
+      }
+      setProfile(data);
+      setLoading(false);
+    };
+    fetchProfile();
 
-  return () => {
-    authListener?.subscription?.unsubscribe?.();
-    if (retryTimeout) clearTimeout(retryTimeout);
-  };
-}, [user]);
+    // Listen for auth state changes to clear profile on logout
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event) => {
+        if (event === "SIGNED_OUT") {
+          setProfile(null);
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      }
+    );
+
+
+    return () => {
+      authListener?.subscription?.unsubscribe?.();
+    };
+  }, [user]);
+
 
   return (
     <ProfileContext.Provider value={{ profile, setProfile, loading }}>
