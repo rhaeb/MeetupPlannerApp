@@ -1,6 +1,6 @@
-"use client";
+"use client"
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react"
 import {
   View,
   Text,
@@ -8,32 +8,38 @@ import {
   Image,
   TouchableOpacity,
   TextInput,
-  ActivityIndicator,
   Animated,
   Easing,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { profileController } from "../../controllers/profileController";
-import { eventController } from "../../controllers/eventController";
-import { Profile } from "../../types";
+  Alert,
+  ScrollView,
+} from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { useRouter, useLocalSearchParams } from "expo-router"
+import { Ionicons } from "@expo/vector-icons"
+import { profileController } from "../../controllers/profileController"
+import { friendController } from "../../controllers/friendController"
+import { eventController } from "../../controllers/eventController"
+import { useAuth } from "../../hooks/useAuth"
+import type { Profile } from "../../types"
 
 export default function ProfileScreen() {
-  const router = useRouter();
-  const { id } = useLocalSearchParams();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter()
+  const { id } = useLocalSearchParams()
+  const { profile: currentUserProfile } = useAuth()
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [stats, setStats] = useState({
     attended: 0,
     friends: 0,
     hosted: 0,
-  });
-  const [message, setMessage] = useState("");
-  
+  })
+  const [message, setMessage] = useState("")
+  const [friendStatus, setFriendStatus] = useState<"none" | "friends" | "pending">("none")
+  const [pendingRequestId, setPendingRequestId] = useState<string | null>(null)
+
   // Animation value for skeleton loading effect
-  const fadeAnim = useState(new Animated.Value(0.3))[0];
+  const fadeAnim = useState(new Animated.Value(0.3))[0]
 
   useEffect(() => {
     // Create the pulse animation for skeleton loading
@@ -51,217 +57,303 @@ export default function ProfileScreen() {
           easing: Easing.ease,
           useNativeDriver: true,
         }),
-      ])
-    ).start();
+      ]),
+    ).start()
 
-    fetchProfileData();
-  }, [id]);
+    fetchProfileData()
+  }, [id, currentUserProfile])
 
   const fetchProfileData = async () => {
-    if (!id) {
-      setError("Profile ID is missing");
-      setLoading(false);
-      return;
+    if (!id || !currentUserProfile) {
+      setError("Profile ID is missing or you're not logged in")
+      setLoading(false)
+      return
     }
 
     try {
-      setLoading(true);
-      setError(null);
+      setLoading(true)
+      setError(null)
 
       // Fetch profile details
-      const { data: profileData, error: profileError } = await profileController.getProfileById(id as string);
-      
-      if (profileError) {
-        throw new Error("Failed to load profile");
-      }
-      
-      setProfile(profileData);
+      const { data: profileData, error: profileError } = await profileController.getProfileById(id as string)
 
-      // Fetch stats (this would be replaced with your actual API calls)
-      // For demo purposes, we're simulating a delay
-      setTimeout(() => {
-        // These would be actual API calls in a real app
-        setStats({
-          attended: 8,
-          friends: 25,
-          hosted: 5,
-        });
-        setLoading(false);
-      }, 1500);
-      
+      if (profileError) {
+        throw new Error("Failed to load profile")
+      }
+
+      setProfile(profileData)
+
+      // Check if they are friends
+      const { data: friendsData } = await friendController.getFriends(currentUserProfile.prof_id)
+
+      if (friendsData && friendsData.friends.some((f) => f.prof_id === id)) {
+        setFriendStatus("friends")
+      } else {
+        // Check if there's a pending request
+        const { data: pendingData } = await friendController.getPendingRequests(currentUserProfile.prof_id)
+
+        if (pendingData) {
+          const sentRequest = pendingData.sent.find((r) => r.requested_id === id)
+          const receivedRequest = pendingData.received.find((r) => r.requester_id === id)
+
+          if (sentRequest || receivedRequest) {
+            setFriendStatus("pending")
+            setPendingRequestId(sentRequest?.friend_req_id || receivedRequest?.friend_req_id || null)
+          }
+        }
+      }
+
+      // Fetch stats
+      const fetchStats = async () => {
+        try {
+          // Get events attended
+          const { data: attendedEvents } = await eventController.getAttendingEvents(id as string)
+
+          // Get friends count
+          const { data: friendsData } = await friendController.getFriends(id as string)
+
+          // Get hosted events
+          const { data: hostedEvents } = await eventController.getHostedEvents(id as string)
+
+          setStats({
+            attended: attendedEvents?.length || 0,
+            friends: friendsData?.friends.length || 0,
+            hosted: hostedEvents?.length || 0,
+          })
+        } catch (error) {
+          console.error("Error fetching stats:", error)
+        }
+      }
+
+      fetchStats()
+      setLoading(false)
     } catch (error) {
-      console.error("Error fetching profile data:", error);
-      setError(error instanceof Error ? error.message : "An unknown error occurred");
-      setLoading(false);
+      console.error("Error fetching profile data:", error)
+      setError(error instanceof Error ? error.message : "An unknown error occurred")
+      setLoading(false)
     }
-  };
+  }
 
   const handleSendMessage = () => {
-    if (!message.trim()) return;
-    
-    // Handle sending message logic here
-    console.log("Sending message:", message);
-    setMessage("");
-  };
+    if (!message.trim() || !profile) return
+
+    // Navigate to chat with initial message
+    router.push({
+      pathname: `/chat/${profile.prof_id}`,
+      params: { initialMessage: message },
+    })
+  }
+
+  const handleAddFriend = async () => {
+    if (!currentUserProfile || !profile) return
+
+    try {
+      const { error } = await friendController.sendFriendRequest(currentUserProfile.prof_id, profile.prof_id)
+
+      if (error) {
+        console.error("Error sending friend request:", error)
+        Alert.alert("Error", "Failed to send friend request")
+      } else {
+        setFriendStatus("pending")
+        Alert.alert("Success", "Friend request sent")
+      }
+    } catch (error) {
+      console.error("Error in handleAddFriend:", error)
+      Alert.alert("Error", "An unexpected error occurred")
+    }
+  }
+
+  const handleRemoveFriend = async () => {
+    if (!currentUserProfile || !profile) return
+
+    Alert.alert("Remove Friend", `Are you sure you want to remove ${profile.name} from your friends?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const { error } = await friendController.removeFriend(currentUserProfile.prof_id, profile.prof_id)
+
+            if (error) {
+              console.error("Error removing friend:", error)
+              Alert.alert("Error", "Failed to remove friend")
+            } else {
+              setFriendStatus("none")
+              Alert.alert("Success", "Friend removed successfully")
+            }
+          } catch (error) {
+            console.error("Error in handleRemoveFriend:", error)
+            Alert.alert("Error", "An unexpected error occurred")
+          }
+        },
+      },
+    ])
+  }
+
+  const handleCancelRequest = async () => {
+    if (!pendingRequestId) return
+
+    try {
+      const { error } = await friendController.rejectFriendRequest(pendingRequestId)
+
+      if (error) {
+        console.error("Error canceling friend request:", error)
+        Alert.alert("Error", "Failed to cancel friend request")
+      } else {
+        setFriendStatus("none")
+        setPendingRequestId(null)
+        Alert.alert("Success", "Friend request canceled")
+      }
+    } catch (error) {
+      console.error("Error in handleCancelRequest:", error)
+      Alert.alert("Error", "An unexpected error occurred")
+    }
+  }
 
   const renderLoadingState = () => (
     <View style={styles.loadingContainer}>
       {/* Profile Image Skeleton */}
-      <Animated.View 
-        style={[
-          styles.profileImageSkeleton, 
-          { opacity: fadeAnim }
-        ]} 
-      />
-      
+      <Animated.View style={[styles.profileImageSkeleton, { opacity: fadeAnim }]} />
+
       {/* Name Skeleton */}
-      <Animated.View 
-        style={[
-          styles.nameSkeleton, 
-          { opacity: fadeAnim }
-        ]} 
-      />
-      
+      <Animated.View style={[styles.nameSkeleton, { opacity: fadeAnim }]} />
+
       {/* Username Skeleton */}
-      <Animated.View 
-        style={[
-          styles.usernameSkeleton, 
-          { opacity: fadeAnim }
-        ]} 
-      />
-      
+      <Animated.View style={[styles.usernameSkeleton, { opacity: fadeAnim }]} />
+
       {/* Location Skeleton */}
-      <Animated.View 
-        style={[
-          styles.locationSkeleton, 
-          { opacity: fadeAnim }
-        ]} 
-      />
-      
+      <Animated.View style={[styles.locationSkeleton, { opacity: fadeAnim }]} />
+
       {/* Stats Skeletons */}
       <View style={styles.statsContainer}>
-        <Animated.View 
-          style={[
-            styles.statItemSkeleton, 
-            { opacity: fadeAnim }
-          ]} 
-        />
-        <Animated.View 
-          style={[
-            styles.statItemSkeleton, 
-            { opacity: fadeAnim }
-          ]} 
-        />
-        <Animated.View 
-          style={[
-            styles.statItemSkeleton, 
-            { opacity: fadeAnim }
-          ]} 
-        />
+        <Animated.View style={[styles.statItemSkeleton, { opacity: fadeAnim }]} />
+        <Animated.View style={[styles.statItemSkeleton, { opacity: fadeAnim }]} />
+        <Animated.View style={[styles.statItemSkeleton, { opacity: fadeAnim }]} />
       </View>
-      
+
       {/* Message Skeleton */}
-      <Animated.View 
-        style={[
-          styles.messageLabelSkeleton, 
-          { opacity: fadeAnim }
-        ]} 
-      />
-      <Animated.View 
-        style={[
-          styles.messageInputSkeleton, 
-          { opacity: fadeAnim }
-        ]} 
-      />
+      <Animated.View style={[styles.messageLabelSkeleton, { opacity: fadeAnim }]} />
+      <Animated.View style={[styles.messageInputSkeleton, { opacity: fadeAnim }]} />
     </View>
-  );
+  )
 
   const renderErrorState = () => (
     <View style={styles.errorContainer}>
       <Ionicons name="alert-circle-outline" size={60} color="#FF6B6B" />
       <Text style={styles.errorTitle}>Something went wrong</Text>
       <Text style={styles.errorMessage}>{error}</Text>
-      <TouchableOpacity 
-        style={styles.retryButton}
-        onPress={fetchProfileData}
-      >
+      <TouchableOpacity style={styles.retryButton} onPress={fetchProfileData}>
         <Text style={styles.retryButtonText}>Try Again</Text>
       </TouchableOpacity>
     </View>
-  );
+  )
+
+  const renderFriendshipButton = () => {
+    if (currentUserProfile?.prof_id === profile?.prof_id) {
+      return null // Don't show any button for own profile
+    }
+
+    switch (friendStatus) {
+      case "friends":
+        return (
+          <TouchableOpacity style={styles.removeFriendButton} onPress={handleRemoveFriend}>
+            <Ionicons name="person-remove" size={18} color="#fff" />
+            <Text style={styles.removeFriendButtonText}>Remove Friend</Text>
+          </TouchableOpacity>
+        )
+      case "pending":
+        return (
+          <TouchableOpacity style={styles.pendingButton} onPress={handleCancelRequest}>
+            <Ionicons name="time" size={18} color="#fff" />
+            <Text style={styles.pendingButtonText}>Pending Request</Text>
+          </TouchableOpacity>
+        )
+      default:
+        return (
+          <TouchableOpacity style={styles.addFriendButton} onPress={handleAddFriend}>
+            <Ionicons name="person-add" size={18} color="#fff" />
+            <Text style={styles.addFriendButtonText}>Add Friend</Text>
+          </TouchableOpacity>
+        )
+    }
+  }
 
   const renderProfileContent = () => (
-    <View style={styles.profileContainer}>
-      {/* Profile Image */}
-      <View style={styles.profileImageContainer}>
-        {profile?.photo ? (
-          <Image source={{ uri: profile.photo }} style={styles.profileImage} />
-        ) : (
-          <View style={styles.profileImagePlaceholder}>
-            <Text style={styles.profileInitial}>
-              {profile?.name ? profile.name.charAt(0).toUpperCase() : "?"}
-            </Text>
+    <ScrollView style={styles.scrollView}>
+      <View style={styles.profileContainer}>
+        {/* Profile Image */}
+        <View style={styles.profileImageContainer}>
+          {profile?.photo ? (
+            <Image source={{ uri: profile.photo }} style={styles.profileImage} />
+          ) : (
+            <View style={styles.profileImagePlaceholder}>
+              <Text style={styles.profileInitial}>{profile?.name ? profile.name.charAt(0).toUpperCase() : "?"}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Profile Info */}
+        <Text style={styles.profileName}>{profile?.name || "User"}</Text>
+        <Text style={styles.username}>@{profile?.username || "username"}</Text>
+
+        {profile?.location && (
+          <View style={styles.locationContainer}>
+            <Ionicons name="location-outline" size={16} color="#666" />
+            <Text style={styles.locationText}>{profile.location}</Text>
           </View>
         )}
-      </View>
-      
-      {/* Profile Info */}
-      <Text style={styles.profileName}>{profile?.name || "User"}</Text>
-      <Text style={styles.username}>@{profile?.username || "username"}</Text>
-      
-      {profile?.location && (
-        <View style={styles.locationContainer}>
-          <Ionicons name="location-outline" size={16} color="#666" />
-          <Text style={styles.locationText}>{profile.location}</Text>
-        </View>
-      )}
-      
-      {/* Stats */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <View style={styles.statIconContainer}>
-            <Text style={styles.statIcon}>+</Text>
+
+        {/* Friendship Button */}
+        {renderFriendshipButton()}
+
+        {/* Stats */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <View style={styles.statIconContainer}>
+              <Text style={styles.statIcon}>+</Text>
+            </View>
+            <Text style={styles.statValue}>{stats.attended}</Text>
+            <Text style={styles.statLabel}>Attended</Text>
           </View>
-          <Text style={styles.statValue}>{stats.attended}</Text>
-          <Text style={styles.statLabel}>Attended</Text>
-        </View>
-        
-        <View style={styles.statItem}>
-          <View style={styles.statIconContainer}>
-            <Ionicons name="people" size={20} color="#0B5E42" />
+
+          <View style={styles.statItem}>
+            <View style={styles.statIconContainer}>
+              <Ionicons name="people" size={20} color="#0B5E42" />
+            </View>
+            <Text style={styles.statValue}>{stats.friends}</Text>
+            <Text style={styles.statLabel}>Friends</Text>
           </View>
-          <Text style={styles.statValue}>{stats.friends}</Text>
-          <Text style={styles.statLabel}>Friends</Text>
-        </View>
-        
-        <View style={styles.statItem}>
-          <View style={styles.statIconContainer}>
-            <Ionicons name="calendar" size={20} color="#0B5E42" />
+
+          <View style={styles.statItem}>
+            <View style={styles.statIconContainer}>
+              <Ionicons name="calendar" size={20} color="#0B5E42" />
+            </View>
+            <Text style={styles.statValue}>{stats.hosted}</Text>
+            <Text style={styles.statLabel}>Hosted</Text>
           </View>
-          <Text style={styles.statValue}>{stats.hosted}</Text>
-          <Text style={styles.statLabel}>Hosted</Text>
         </View>
+
+        {/* Message Input - Only show if they are friends */}
+        {friendStatus === "friends" && (
+          <>
+            <Text style={styles.messageLabel}>Send a message</Text>
+            <View style={styles.messageInputContainer}>
+              <TextInput
+                style={styles.messageInput}
+                placeholder="Type a message..."
+                value={message}
+                onChangeText={setMessage}
+              />
+              <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage} disabled={!message.trim()}>
+                <Ionicons name="send" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </View>
-      
-      {/* Message Input */}
-      <Text style={styles.messageLabel}>Send a message</Text>
-      <View style={styles.messageInputContainer}>
-        <TextInput
-          style={styles.messageInput}
-          placeholder="Type a message..."
-          value={message}
-          onChangeText={setMessage}
-        />
-        <TouchableOpacity 
-          style={styles.sendButton}
-          onPress={handleSendMessage}
-          disabled={!message.trim()}
-        >
-          <Ionicons name="send" size={20} color="#fff" />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    </ScrollView>
+  )
 
   return (
     <SafeAreaView style={styles.container}>
@@ -269,25 +361,24 @@ export default function ProfileScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {loading ? "Loading Profile..." : profile?.name || "Profile"}
-        </Text>
+        <Text style={styles.headerTitle}>{loading ? "Loading Profile..." : profile?.name || "Profile"}</Text>
         <TouchableOpacity style={styles.moreButton}>
           <Ionicons name="ellipsis-horizontal" size={24} color="#333" />
         </TouchableOpacity>
       </View>
 
-      {loading ? renderLoadingState() : 
-       error ? renderErrorState() : 
-       renderProfileContent()}
+      {loading ? renderLoadingState() : error ? renderErrorState() : renderProfileContent()}
     </SafeAreaView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  scrollView: {
+    flex: 1,
   },
   header: {
     flexDirection: "row",
@@ -403,6 +494,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 30,
     paddingHorizontal: 20,
+    paddingBottom: 40,
   },
   profileImageContainer: {
     width: 100,
@@ -448,12 +540,55 @@ const styles = StyleSheet.create({
   locationContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 16,
   },
   locationText: {
     fontSize: 14,
     color: "#666",
     marginLeft: 4,
+  },
+  // Friendship buttons
+  addFriendButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#4CAF50",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginBottom: 24,
+  },
+  addFriendButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  removeFriendButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ff4d4f",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginBottom: 24,
+  },
+  removeFriendButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  pendingButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#faad14",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginBottom: 24,
+  },
+  pendingButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    marginLeft: 8,
   },
   statsContainer: {
     flexDirection: "row",
@@ -517,4 +652,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-});
+})

@@ -1,80 +1,319 @@
-"use client";
+"use client"
 
-import React, { useState } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  SafeAreaView, 
-  ScrollView, 
-  TextInput, 
+import { useState, useEffect } from "react"
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  TextInput,
   TouchableOpacity,
-  Image
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-
-// Mock data for friends
-const yourFriends = [
-  {
-    id: "1",
-    name: "JLL",
-    username: "@zyahQueenza13",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=634&q=80"
-  },
-  {
-    id: "2",
-    name: "Samson",
-    username: "@samtanuu",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=634&q=80"
-  },
-  {
-    id: "3",
-    name: "Cedrick Mier",
-    username: "@kimsohyun",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=634&q=80"
-  },
-  {
-    id: "4",
-    name: "ㅤㅗ 애뜬 여왕",
-    username: "@aehnu_",
-    avatar: "https://images.unsplash.com/photo-1520810627419-35e362c5dc07?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=634&q=80"
-  },
-  {
-    id: "5",
-    name: "Dalyn Chwe",
-    username: "@_JYP_",
-    avatar: "https://images.unsplash.com/photo-1545912452-8aea7e25a3d3?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=634&q=80"
-  }
-];
-
-// Mock data for suggested friends
-const suggestedFriends = [
-  {
-    id: "6",
-    name: "imanengtishera halata",
-    username: "@beet",
-    avatar: "https://images.unsplash.com/photo-1586297135537-94bc9ba060aa?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=800&q=80"
-  },
-  {
-    id: "7",
-    name: "GoldenRetriever",
-    username: "@hhhhhhh",
-    avatar: "https://images.unsplash.com/photo-1552053831-71594a27632d?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=634&q=80"
-  }
-];
+  Image,
+  ActivityIndicator,
+  Alert,
+} from "react-native"
+import { Ionicons } from "@expo/vector-icons"
+import { useRouter } from "expo-router"
+import { useAuth } from "../../../hooks/useAuth"
+import { friendController } from "../../../controllers/friendController"
+import { profileController } from "../../../controllers/profileController"
+import type { Profile } from "../../../types"
 
 export default function FriendsScreen() {
-  const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter()
+  const { profile: currentUserProfile } = useAuth()
+  const [searchQuery, setSearchQuery] = useState("")
+  const [friends, setFriends] = useState<Profile[]>([])
+  const [suggestedProfiles, setSuggestedProfiles] = useState<Profile[]>([])
+  const [pendingRequests, setPendingRequests] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchResults, setSearchResults] = useState<Profile[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+
+  useEffect(() => {
+    if (currentUserProfile) {
+      fetchFriends()
+      fetchPendingRequests()
+      fetchSuggestedProfiles()
+    }
+  }, [currentUserProfile])
+
+  useEffect(() => {
+    // Debounce search to avoid too many requests
+    const delayDebounceFn = setTimeout(() => {
+      if (searchQuery.trim()) {
+        handleSearch()
+      } else {
+        setSearchResults([])
+        setIsSearching(false)
+      }
+    }, 500) // 500ms delay
+
+    return () => clearTimeout(delayDebounceFn)
+  }, [searchQuery])
+
+  const fetchFriends = async () => {
+    if (!currentUserProfile) return
+
+    try {
+      setLoading(true)
+      const { data, error } = await friendController.getFriends(currentUserProfile.prof_id)
+
+      if (error) {
+        console.error("Error fetching friends:", error)
+        Alert.alert("Error", "Failed to load friends")
+      } else if (data) {
+        setFriends(data.friends)
+      }
+    } catch (error) {
+      console.error("Error in fetchFriends:", error)
+      Alert.alert("Error", "An unexpected error occurred")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchPendingRequests = async () => {
+    if (!currentUserProfile) return
+
+    try {
+      const { data, error } = await friendController.getPendingRequests(currentUserProfile.prof_id)
+
+      if (error) {
+        console.error("Error fetching pending requests:", error)
+      } else if (data) {
+        setPendingRequests([...data.sent, ...data.received])
+      }
+    } catch (error) {
+      console.error("Error in fetchPendingRequests:", error)
+    }
+  }
+
+  const fetchSuggestedProfiles = async () => {
+    if (!currentUserProfile) return
+
+    try {
+      // In a real app, you might have a specific API for suggested friends
+      // For now, we'll just search for some random profiles
+      const { data, error } = await profileController.searchProfiles("")
+
+      if (error) {
+        console.error("Error fetching suggested profiles:", error)
+      } else if (data) {
+        // Filter out current user and existing friends
+        const filtered = data.filter(
+          (p) =>
+            p.prof_id !== currentUserProfile.prof_id &&
+            !friends.some((f) => f.prof_id === p.prof_id) &&
+            !pendingRequests.some((r) => r.requester_id === p.prof_id || r.requested_id === p.prof_id),
+        )
+
+        setSuggestedProfiles(filtered.slice(0, 5)) // Limit to 5 suggestions
+      }
+    } catch (error) {
+      console.error("Error in fetchSuggestedProfiles:", error)
+    }
+  }
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      setSearchResults([])
+      setIsSearching(false)
+      return
+    }
+
+    setIsSearching(true)
+    try {
+      const { data, error } = await profileController.searchProfiles(searchQuery)
+
+      if (error) {
+        console.error("Error searching profiles:", error)
+        Alert.alert("Error", "Failed to search profiles")
+      } else if (data) {
+        // Filter out current user
+        const filtered = data.filter((p) => p.prof_id !== currentUserProfile?.prof_id)
+        setSearchResults(filtered)
+      }
+    } catch (error) {
+      console.error("Error in handleSearch:", error)
+      Alert.alert("Error", "An unexpected error occurred")
+    }
+  }
 
   const handleMessage = (friendId: string) => {
-    console.log(`Message friend with ID: ${friendId}`);
-    // Navigate to chat screen or open message modal
-  };
+    router.push(`/chat/${friendId}`)
+  }
 
-  const handleAddFriend = (friendId: string) => {
-    console.log(`Add friend with ID: ${friendId}`);
-    // Add friend logic
-  };
+  const handleAddFriend = async (profileId: string) => {
+    if (!currentUserProfile) return
+
+    try {
+      const { error } = await friendController.sendFriendRequest(currentUserProfile.prof_id, profileId)
+
+      if (error) {
+        console.error("Error sending friend request:", error)
+        Alert.alert("Error", "Failed to send friend request")
+      } else {
+        Alert.alert("Success", "Friend request sent successfully")
+        // Refresh data
+        fetchPendingRequests()
+        fetchSuggestedProfiles()
+      }
+    } catch (error) {
+      console.error("Error in handleAddFriend:", error)
+      Alert.alert("Error", "An unexpected error occurred")
+    }
+  }
+
+  const handleRemoveFriend = async (friendId: string) => {
+    if (!currentUserProfile) return
+
+    Alert.alert("Remove Friend", "Are you sure you want to remove this friend?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const { error } = await friendController.removeFriend(currentUserProfile.prof_id, friendId)
+
+            if (error) {
+              console.error("Error removing friend:", error)
+              Alert.alert("Error", "Failed to remove friend")
+            } else {
+              // Update friends list
+              setFriends(friends.filter((f) => f.prof_id !== friendId))
+              Alert.alert("Success", "Friend removed successfully")
+            }
+          } catch (error) {
+            console.error("Error in handleRemoveFriend:", error)
+            Alert.alert("Error", "An unexpected error occurred")
+          }
+        },
+      },
+    ])
+  }
+
+  const handleViewProfile = (profileId: string) => {
+    router.push(`/friends/${profileId}`)
+  }
+
+  const renderFriendItem = (friend: Profile) => (
+    <TouchableOpacity key={friend.prof_id} style={styles.friendItem} onPress={() => handleViewProfile(friend.prof_id)}>
+      <View style={styles.friendInfo}>
+        <Image
+          source={{
+            uri:
+              friend.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(friend.name)}&background=random`,
+          }}
+          style={styles.avatar}
+        />
+        <View style={styles.friendDetails}>
+          <Text style={styles.friendName}>{friend.name}</Text>
+          <Text style={styles.friendUsername}>{friend.username || `@user${friend.prof_id.substring(0, 8)}`}</Text>
+        </View>
+      </View>
+      <View style={styles.actionButtons}>
+        <TouchableOpacity style={styles.messageButton} onPress={() => handleMessage(friend.prof_id)}>
+          <Text style={styles.messageButtonText}>Message</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.removeButton} onPress={() => handleRemoveFriend(friend.prof_id)}>
+          <Ionicons name="close" size={16} color="#ff4d4f" />
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  )
+
+  const renderSuggestedFriendItem = (profile: Profile) => (
+    <TouchableOpacity
+      key={profile.prof_id}
+      style={styles.friendItem}
+      onPress={() => handleViewProfile(profile.prof_id)}
+    >
+      <View style={styles.friendInfo}>
+        <Image
+          source={{
+            uri:
+              profile.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name)}&background=random`,
+          }}
+          style={styles.avatar}
+        />
+        <View style={styles.friendDetails}>
+          <Text style={styles.friendName}>{profile.name}</Text>
+          <Text style={styles.friendUsername}>{profile.username || `@user${profile.prof_id.substring(0, 8)}`}</Text>
+        </View>
+      </View>
+      <TouchableOpacity style={styles.addButton} onPress={() => handleAddFriend(profile.prof_id)}>
+        <Ionicons name="add" size={16} color="#fff" />
+        <Text style={styles.addButtonText}>Add</Text>
+      </TouchableOpacity>
+    </TouchableOpacity>
+  )
+
+  const renderSearchResults = () => (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Search Results</Text>
+
+      {searchResults.length > 0 ? (
+        searchResults.map((profile) => {
+          const isFriend = friends.some((f) => f.prof_id === profile.prof_id)
+          const hasPendingRequest = pendingRequests.some(
+            (r) =>
+              (r.requester_id === currentUserProfile?.prof_id && r.requested_id === profile.prof_id) ||
+              (r.requested_id === currentUserProfile?.prof_id && r.requester_id === profile.prof_id),
+          )
+
+          return (
+            <TouchableOpacity
+              key={profile.prof_id}
+              style={styles.friendItem}
+              onPress={() => handleViewProfile(profile.prof_id)}
+            >
+              <View style={styles.friendInfo}>
+                <Image
+                  source={{
+                    uri:
+                      profile.photo ||
+                      `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name)}&background=random`,
+                  }}
+                  style={styles.avatar}
+                />
+                <View style={styles.friendDetails}>
+                  <Text style={styles.friendName}>{profile.name}</Text>
+                  <Text style={styles.friendUsername}>
+                    {profile.username || `@user${profile.prof_id.substring(0, 8)}`}
+                  </Text>
+                </View>
+              </View>
+
+              {isFriend ? (
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity style={styles.messageButton} onPress={() => handleMessage(profile.prof_id)}>
+                    <Text style={styles.messageButtonText}>Message</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.removeButton} onPress={() => handleRemoveFriend(profile.prof_id)}>
+                    <Ionicons name="close" size={16} color="#ff4d4f" />
+                  </TouchableOpacity>
+                </View>
+              ) : hasPendingRequest ? (
+                <TouchableOpacity style={styles.pendingButton} disabled>
+                  <Text style={styles.pendingButtonText}>Pending</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={styles.addButton} onPress={() => handleAddFriend(profile.prof_id)}>
+                  <Ionicons name="add" size={16} color="#fff" />
+                  <Text style={styles.addButtonText}>Add</Text>
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+          )
+        })
+      ) : (
+        <Text style={styles.noResultsText}>No results found</Text>
+      )}
+    </View>
+  )
 
   return (
     <SafeAreaView style={styles.container}>
@@ -90,62 +329,49 @@ export default function FriendsScreen() {
           <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search Friends..."
+            placeholder="Search by name or username..."
             value={searchQuery}
             onChangeText={setSearchQuery}
+            returnKeyType="search"
           />
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Friends</Text>
-          
-          {yourFriends.map(friend => (
-            <View key={friend.id} style={styles.friendItem}>
-              <View style={styles.friendInfo}>
-                <Image source={{ uri: friend.avatar }} style={styles.avatar} />
-                <View style={styles.friendDetails}>
-                  <Text style={styles.friendName}>{friend.name}</Text>
-                  <Text style={styles.friendUsername}>{friend.username}</Text>
-                </View>
-              </View>
-              <TouchableOpacity 
-                style={styles.messageButton}
-                onPress={() => handleMessage(friend.id)}
-              >
-                <Text style={styles.messageButtonText}>Message</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
+        {loading && !isSearching ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4CAF50" />
+          </View>
+        ) : (
+          <>
+            {isSearching ? (
+              renderSearchResults()
+            ) : (
+              <>
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Your Friends</Text>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Suggested Friends</Text>
-          
-          {suggestedFriends.map(friend => (
-            <View key={friend.id} style={styles.friendItem}>
-              <View style={styles.friendInfo}>
-                <Image source={{ uri: friend.avatar }} style={styles.avatar} />
-                <View style={styles.friendDetails}>
-                  <Text style={styles.friendName}>{friend.name}</Text>
-                  <Text style={styles.friendUsername}>{friend.username}</Text>
+                  {friends.length > 0 ? (
+                    friends.map(renderFriendItem)
+                  ) : (
+                    <Text style={styles.noFriendsText}>You don't have any friends yet. Try adding some!</Text>
+                  )}
                 </View>
-              </View>
-              <TouchableOpacity 
-                style={styles.addButton}
-                onPress={() => handleAddFriend(friend.id)}
-              >
-                <Ionicons name="add" size={16} color="#fff" />
-                <Text style={styles.addButtonText}>Add</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
+
+                {suggestedProfiles.length > 0 && (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Suggested Friends</Text>
+                    {suggestedProfiles.map(renderSuggestedFriendItem)}
+                  </View>
+                )}
+              </>
+            )}
+          </>
+        )}
 
         {/* Add some space at the bottom */}
         <View style={{ height: 20 }} />
       </ScrollView>
     </SafeAreaView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -189,6 +415,21 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: "#333",
+    height: 45,
+  },
+  searchButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "#4CAF50",
+    borderRadius: 4,
+  },
+  searchButtonText: {
+    color: "#fff",
+    fontWeight: "500",
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: "center",
   },
   section: {
     marginTop: 15,
@@ -234,6 +475,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
   },
+  actionButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   messageButton: {
     paddingHorizontal: 15,
     paddingVertical: 6,
@@ -241,10 +486,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ddd",
     backgroundColor: "#fff",
+    marginRight: 8,
   },
   messageButtonText: {
     fontSize: 14,
     color: "#333",
+  },
+  removeButton: {
+    padding: 6,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: "#ffccc7",
+    backgroundColor: "#fff1f0",
   },
   addButton: {
     flexDirection: "row",
@@ -252,11 +505,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 4,
-    backgroundColor: "#8e44ad",
+    backgroundColor: "#4CAF50",
   },
   addButtonText: {
     fontSize: 14,
     color: "#fff",
     marginLeft: 4,
   },
-});
+  pendingButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 4,
+    backgroundColor: "#f0f0f0",
+  },
+  pendingButtonText: {
+    fontSize: 14,
+    color: "#666",
+  },
+  noFriendsText: {
+    textAlign: "center",
+    color: "#666",
+    padding: 20,
+    fontStyle: "italic",
+  },
+  noResultsText: {
+    textAlign: "center",
+    color: "#666",
+    padding: 20,
+    fontStyle: "italic",
+  },
+})

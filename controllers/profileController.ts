@@ -101,11 +101,20 @@ export const profileController = {
   // Search profiles
   async searchProfiles(query: string): Promise<{ error: any; data: Profile[] | null }> {
     try {
+      if (!query.trim()) {
+        // If query is empty, return a limited set of random profiles
+        const { data, error } = await supabase.from("profile").select("*").limit(20)
+
+        if (error) throw error
+        return { data, error: null }
+      }
+
+      // Search by both name and username
       const { data, error } = await supabase
-        .from('profile')
-        .select('*')
-        .ilike('name', `%${query}%`)
-        .limit(20);
+        .from("profile")
+        .select("*")
+        .or(`name.ilike.%${query}%,username.ilike.%${query}%`)
+        .limit(20)
 
       if (error) throw error;
 
