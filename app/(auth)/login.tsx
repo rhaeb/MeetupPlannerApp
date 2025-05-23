@@ -69,11 +69,11 @@ export default function LoginScreen() {
 
       {/* White background bottom section */}
       <View style={styles.bottomContainer}>
-        <Link href="/forgotPassword" asChild>
+        {/* <Link href="/forgotPassword" asChild>
           <TouchableOpacity>
             <Text style={styles.forgotPassword}>Forgot Password?</Text>
           </TouchableOpacity>
-        </Link>
+        </Link> */}
 
         <TouchableOpacity style={styles.signInButton} onPress={handleLogin}>
           <Text style={styles.signInText}>Sign In</Text>
