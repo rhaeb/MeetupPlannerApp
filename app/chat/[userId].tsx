@@ -38,21 +38,48 @@ export default function ChatScreen() {
   const [chatInfo, setChatInfo] = useState<Profile | Event | null>(null)
   const [isEventChat, setIsEventChat] = useState(false)
   const [sending, setSending] = useState(false)
+  const [loadingTimeout, setLoadingTimeout] = useState(false)
 
   const flatListRef = useRef<FlatList>(null)
   const subscriptionRef = useRef<any>(null)
 
   useEffect(() => {
-    if (id && currentUserProfile) {
-      setIsEventChat(type === "event")
-      fetchChatInfo()
-      fetchMessages()
-      setupRealtimeSubscription()
+    const stringId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : null
+
+    if (!stringId) {
+      return (
+        <SafeAreaView style={styles.container}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Invalid chat ID. Please go back and try again.</Text>
+          </View>
+        </SafeAreaView>
+      )
     }
+
+    if (!currentUserProfile) {
+      console.error("ChatScreen: No currentUserProfile found from useAuth.")
+      return (
+        <SafeAreaView style={styles.container}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Unable to load your profile. Please log in again.</Text>
+          </View>
+        </SafeAreaView>
+      )
+    }
+
+    console.log("Setting up chat with ID:", stringId, "Type:", type)
+    setIsEventChat(type === "event")
+    fetchChatInfo(stringId)
+    fetchMessages(stringId)
+    setupRealtimeSubscription(stringId)
 
     return () => {
       if (subscriptionRef.current) {
-        subscriptionRef.current.unsubscribe()
+        if (typeof subscriptionRef.current.unsubscribe === "function") {
+          subscriptionRef.current.unsubscribe()
+        } else if (typeof subscriptionRef.current.destroy === "function") {
+          subscriptionRef.current.destroy()
+        }
       }
     }
   }, [id, type, currentUserProfile])
@@ -66,12 +93,10 @@ export default function ChatScreen() {
     }
   }, [messages])
 
-  const fetchChatInfo = async () => {
-    if (!id) return
-
+  const fetchChatInfo = async (chatId: string) => {
     try {
       if (type === "event") {
-        const { data, error } = await eventController.getEventById(id as string)
+        const { data, error } = await eventController.getEventById(chatId)
         if (error) {
           console.error("Error fetching event:", error)
           Alert.alert("Error", "Failed to load event information")
@@ -79,7 +104,7 @@ export default function ChatScreen() {
           setChatInfo(data)
         }
       } else {
-        const { data, error } = await profileController.getProfileById(id as string)
+        const { data, error } = await profileController.getProfileById(chatId)
         if (error) {
           console.error("Error fetching profile:", error)
           Alert.alert("Error", "Failed to load profile information")
@@ -89,18 +114,24 @@ export default function ChatScreen() {
       }
     } catch (error) {
       console.error("Error in fetchChatInfo:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const fetchMessages = async () => {
-    if (!id || !currentUserProfile) return
+  const fetchMessages = async (chatId: string) => {
+    if (!currentUserProfile) {
+      console.error("fetchMessages: Missing currentUserProfile.")
+      setLoading(false)
+      return
+    }
 
     try {
       setLoading(true)
       let messagesData: ChatMessage[] = []
 
       if (type === "event") {
-        const { data, error } = await messageController.getEventMessages(id as string)
+        const { data, error } = await messageController.getEventMessages(chatId)
         if (error) {
           console.error("Error fetching event messages:", error)
           Alert.alert("Error", "Failed to load messages")
@@ -108,22 +139,23 @@ export default function ChatScreen() {
           messagesData = data
         }
       } else {
-        // For friend messages, we need to get messages where either user is sender/receiver
-        const { data, error } = await messageController.getFriendMessages(currentUserProfile.prof_id, id as string)
+        const { data, error } = await messageController.getFriendMessages(currentUserProfile.prof_id, chatId)
         if (error) {
           console.error("Error fetching friend messages:", error)
           Alert.alert("Error", "Failed to load messages")
         } else if (data) {
-          // Filter messages between current user and the friend
-          messagesData = data.filter(
-            (msg) =>
-              (msg.sender_id === currentUserProfile.prof_id && msg.friend_id === id) ||
-              (msg.sender_id === id && msg.friend_id === currentUserProfile.prof_id),
-          )
+          messagesData = data
         }
       }
 
-      setMessages(messagesData)
+      const messagesWithSenders = await Promise.all(
+        messagesData.map(async (msg) => {
+          if (msg.sender) return msg
+          return await fetchSenderInfo(msg)
+        }),
+      )
+
+      setMessages(messagesWithSenders)
     } catch (error) {
       console.error("Error in fetchMessages:", error)
       Alert.alert("Error", "An unexpected error occurred")
@@ -132,22 +164,18 @@ export default function ChatScreen() {
     }
   }
 
-  const setupRealtimeSubscription = () => {
-    if (!id) return
-
+  const setupRealtimeSubscription = (chatId: string) => {
     if (type === "event") {
-      subscriptionRef.current = messageController.subscribeToEventMessages(id as string, (newMessage) => {
-        // Fetch sender info for the new message
+      subscriptionRef.current = messageController.subscribeToEventMessages(chatId, (newMessage) => {
         fetchSenderInfo(newMessage).then((messageWithSender) => {
           setMessages((prev) => [...prev, messageWithSender])
         })
       })
     } else {
-      subscriptionRef.current = messageController.subscribeToFriendMessages(id as string, (newMessage) => {
-        // Only add message if it's relevant to this conversation
+      subscriptionRef.current = messageController.subscribeToFriendMessages(chatId, (newMessage) => {
         if (
-          (newMessage.sender_id === currentUserProfile?.prof_id && newMessage.friend_id === id) ||
-          (newMessage.sender_id === id && newMessage.friend_id === currentUserProfile?.prof_id)
+          (newMessage.sender_id === currentUserProfile?.prof_id && newMessage.friend_id === chatId) ||
+          (newMessage.sender_id === chatId && newMessage.friend_id === currentUserProfile?.prof_id)
         ) {
           fetchSenderInfo(newMessage).then((messageWithSender) => {
             setMessages((prev) => [...prev, messageWithSender])
@@ -171,15 +199,23 @@ export default function ChatScreen() {
   }
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !currentUserProfile || !id || sending) return
+    const stringId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : null
+
+    if (!newMessage.trim() || !currentUserProfile || !stringId || sending) {
+      if (!newMessage.trim()) console.warn("sendMessage: No message to send.")
+      if (!currentUserProfile) console.error("sendMessage: No currentUserProfile.")
+      if (!stringId) console.error("sendMessage: No valid chat id.")
+      if (sending) console.warn("sendMessage: Already sending.")
+      return
+    }
 
     try {
       setSending(true)
       const messageData = {
         message: newMessage.trim(),
         sender_id: currentUserProfile.prof_id,
-        friend_id: type === "friend" ? (id as string) : null,
-        event_id: type === "event" ? (id as string) : null,
+        friend_id: type === "friend" ? stringId : null,
+        event_id: type === "event" ? stringId : null,
       }
 
       const { error } = await messageController.sendMessage(messageData)
@@ -279,6 +315,22 @@ export default function ChatScreen() {
       </SafeAreaView>
     )
   }
+
+  // Add a safety timeout to prevent infinite loading
+  useEffect(() => {
+    if (loading && !loadingTimeout) {
+      const timer = setTimeout(() => {
+        setLoadingTimeout(true)
+        if (loading) {
+          setLoading(false)
+          console.log("Loading timeout triggered")
+          Alert.alert("Timeout", "Failed to load chat. Please check your connection and try again.")
+        }
+      }, 10000) // 10 seconds timeout
+
+      return () => clearTimeout(timer)
+    }
+  }, [loading, loadingTimeout])
 
   return (
     <SafeAreaView style={styles.container}>

@@ -32,19 +32,20 @@ export const messageController = {
     try {
       const { data, error } = await supabase
         .from("message")
-        .select("*, sender:sender_id(prof_id, name, photo)")
+        .select("*") // Remove the sender join
         .or(
           `and(sender_id.eq.${currentUserId},friend_id.eq.${friendId}),and(sender_id.eq.${friendId},friend_id.eq.${currentUserId})`,
         )
         .is("event_id", null)
         .order("created_at", { ascending: true })
 
+      // If no messages, data will be [], not null
       if (error) throw error
 
-      return { data, error: null }
+      return { data: data || [], error: null }
     } catch (error) {
       console.error("Get friend messages error:", error)
-      return { data: null, error }
+      return { data: [], error }
     }
   },
 
@@ -53,17 +54,17 @@ export const messageController = {
     try {
       const { data, error } = await supabase
         .from("message")
-        .select("*, sender:sender_id(prof_id, name, photo)")
+        .select("*") // Remove the sender join
         .eq("event_id", eventId)
         .is("friend_id", null)
         .order("created_at", { ascending: true })
 
       if (error) throw error
 
-      return { data, error: null }
+      return { data: data || [], error: null }
     } catch (error) {
       console.error("Get event messages error:", error)
-      return { data: null, error }
+      return { data: [], error }
     }
   },
 

@@ -202,7 +202,17 @@ export default function FriendsScreen() {
   }
 
   const handleMessage = (friendId: string) => {
-    router.push(`/chat/${friendId}`)
+    if (!friendId) {
+      console.error("handleMessage: No friend ID provided")
+      Alert.alert("Error", "Unable to open chat. Please try again.")
+      return
+    }
+
+    console.log("Navigating to chat with friend ID:", friendId)
+    router.push({
+      pathname: `/chat/${friendId}`,
+      params: { id: friendId, type: "friend" },
+    })
   }
 
   const handleAddFriend = async (profileId: string) => {
