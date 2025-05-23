@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import {
   View,
   Text,
@@ -37,6 +37,11 @@ export default function ProfileScreen() {
   const [message, setMessage] = useState("")
   const [friendStatus, setFriendStatus] = useState<"none" | "friends" | "pending">("none")
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null)
+  const [pendingDirection, setPendingDirection] = useState<"sent" | "received" | null>(null)
+
+  // Refs for subscriptions
+  const friendRequestSubscription = useRef<any>(null)
+  const friendChangesSubscription = useRef<any>(null)
 
   // Animation value for skeleton loading effect
   const fadeAnim = useState(new Animated.Value(0.3))[0]
@@ -65,8 +70,42 @@ export default function ProfileScreen() {
       setError(null)
       setLoading(true)
       fetchProfileData()
+      setupSubscriptions()
+    }
+
+    return () => {
+      // Clean up subscriptions
+      if (friendRequestSubscription.current) {
+        friendRequestSubscription.current.unsubscribe()
+      }
+      if (friendChangesSubscription.current) {
+        friendChangesSubscription.current.unsubscribe()
+      }
     }
   }, [id, currentUserProfile])
+
+  const setupSubscriptions = () => {
+    if (!currentUserProfile || !id) return
+
+    // Subscribe to friend requests
+    friendRequestSubscription.current = friendController.subscribeToFriendRequests(
+      currentUserProfile.prof_id,
+      (payload) => {
+        console.log("Friend request change:", payload)
+        checkFriendshipStatus()
+      },
+    )
+
+    // Subscribe to friend changes
+    friendChangesSubscription.current = friendController.subscribeToFriendChanges(
+      currentUserProfile.prof_id,
+      (payload) => {
+        console.log("Friend change:", payload)
+        checkFriendshipStatus()
+        fetchStats()
+      },
+    )
+  }
 
   const fetchProfileData = async () => {
     // Don't set error if id or currentUserProfile is missing, just return
@@ -87,54 +126,66 @@ export default function ProfileScreen() {
 
       setProfile(profileData)
 
-      // Check if they are friends
-      const { data: friendsData } = await friendController.getFriends(currentUserProfile.prof_id)
-
-      if (friendsData && friendsData.friends.some((f) => f.prof_id === id)) {
-        setFriendStatus("friends")
-      } else {
-        // Check if there's a pending request
-        const { data: pendingData } = await friendController.getPendingRequests(currentUserProfile.prof_id)
-
-        if (pendingData) {
-          const sentRequest = pendingData.sent.find((r) => r.requested_id === id)
-          const receivedRequest = pendingData.received.find((r) => r.requester_id === id)
-
-          if (sentRequest || receivedRequest) {
-            setFriendStatus("pending")
-            setPendingRequestId(sentRequest?.friend_req_id || receivedRequest?.friend_req_id || null)
-          }
-        }
-      }
+      // Check friendship status
+      await checkFriendshipStatus()
 
       // Fetch stats
-      const fetchStats = async () => {
-        try {
-          // Get events attended
-          const { data: attendedEvents } = await eventController.getAttendingEvents(id as string)
+      await fetchStats()
 
-          // Get friends count
-          const { data: friendsData } = await friendController.getFriends(id as string)
-
-          // Get hosted events
-          const { data: hostedEvents } = await eventController.getHostedEvents(id as string)
-
-          setStats({
-            attended: attendedEvents?.length || 0,
-            friends: friendsData?.friends.length || 0,
-            hosted: hostedEvents?.length || 0,
-          })
-        } catch (error) {
-          console.error("Error fetching stats:", error)
-        }
-      }
-
-      fetchStats()
       setLoading(false)
     } catch (error) {
       console.error("Error fetching profile data:", error)
       setError(error instanceof Error ? error.message : "An unknown error occurred")
       setLoading(false)
+    }
+  }
+
+  const checkFriendshipStatus = async () => {
+    if (!currentUserProfile || !id) return
+
+    try {
+      const { data, error } = await friendController.checkFriendRequestStatus(currentUserProfile.prof_id, id as string)
+
+      if (error) {
+        console.error("Error checking friendship status:", error)
+        return
+      }
+
+      if (data) {
+        setFriendStatus(data.status)
+        if (data.status === "pending") {
+          setPendingRequestId(data.requestId || null)
+          setPendingDirection(data.direction || null)
+        } else {
+          setPendingRequestId(null)
+          setPendingDirection(null)
+        }
+      }
+    } catch (error) {
+      console.error("Error in checkFriendshipStatus:", error)
+    }
+  }
+
+  const fetchStats = async () => {
+    if (!id) return
+
+    try {
+      // Get events attended
+      const { data: attendedEvents } = await eventController.getAttendingEvents(id as string)
+
+      // Get friends count
+      const { data: friendsData } = await friendController.getFriends(id as string)
+
+      // Get hosted events
+      const { data: hostedEvents } = await eventController.getHostedEvents(id as string)
+
+      setStats({
+        attended: attendedEvents?.length || 0,
+        friends: friendsData?.friends.length || 0,
+        hosted: hostedEvents?.length || 0,
+      })
+    } catch (error) {
+      console.error("Error fetching stats:", error)
     }
   }
 
@@ -158,7 +209,9 @@ export default function ProfileScreen() {
         console.error("Error sending friend request:", error)
         Alert.alert("Error", "Failed to send friend request")
       } else {
+        // Update UI immediately
         setFriendStatus("pending")
+        setPendingDirection("sent")
         Alert.alert("Success", "Friend request sent")
       }
     } catch (error) {
@@ -183,6 +236,7 @@ export default function ProfileScreen() {
               console.error("Error removing friend:", error)
               Alert.alert("Error", "Failed to remove friend")
             } else {
+              // Update UI immediately
               setFriendStatus("none")
               Alert.alert("Success", "Friend removed successfully")
             }
@@ -205,12 +259,36 @@ export default function ProfileScreen() {
         console.error("Error canceling friend request:", error)
         Alert.alert("Error", "Failed to cancel friend request")
       } else {
+        // Update UI immediately
         setFriendStatus("none")
         setPendingRequestId(null)
+        setPendingDirection(null)
         Alert.alert("Success", "Friend request canceled")
       }
     } catch (error) {
       console.error("Error in handleCancelRequest:", error)
+      Alert.alert("Error", "An unexpected error occurred")
+    }
+  }
+
+  const handleAcceptRequest = async () => {
+    if (!pendingRequestId) return
+
+    try {
+      const { error } = await friendController.acceptFriendRequest(pendingRequestId)
+
+      if (error) {
+        console.error("Error accepting friend request:", error)
+        Alert.alert("Error", "Failed to accept friend request")
+      } else {
+        // Update UI immediately
+        setFriendStatus("friends")
+        setPendingRequestId(null)
+        setPendingDirection(null)
+        Alert.alert("Success", "Friend request accepted")
+      }
+    } catch (error) {
+      console.error("Error in handleAcceptRequest:", error)
       Alert.alert("Error", "An unexpected error occurred")
     }
   }
@@ -267,12 +345,27 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         )
       case "pending":
-        return (
-          <TouchableOpacity style={styles.pendingButton} onPress={handleCancelRequest}>
-            <Ionicons name="time" size={18} color="#fff" />
-            <Text style={styles.pendingButtonText}>Pending Request</Text>
-          </TouchableOpacity>
-        )
+        if (pendingDirection === "sent") {
+          return (
+            <TouchableOpacity style={styles.pendingButton} onPress={handleCancelRequest}>
+              <Ionicons name="time" size={18} color="#fff" />
+              <Text style={styles.pendingButtonText}>Pending Request</Text>
+            </TouchableOpacity>
+          )
+        } else {
+          return (
+            <View style={styles.requestButtonsContainer}>
+              <TouchableOpacity style={styles.acceptButton} onPress={handleAcceptRequest}>
+                <Ionicons name="checkmark" size={18} color="#fff" />
+                <Text style={styles.acceptButtonText}>Accept</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.rejectButton} onPress={handleCancelRequest}>
+                <Ionicons name="close" size={18} color="#fff" />
+                <Text style={styles.rejectButtonText}>Reject</Text>
+              </TouchableOpacity>
+            </View>
+          )
+        }
       default:
         return (
           <TouchableOpacity style={styles.addFriendButton} onPress={handleAddFriend}>
@@ -371,11 +464,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {loading
-        ? renderLoadingState()
-        : error && !loading
-          ? renderErrorState()
-          : renderProfileContent()}
+      {loading ? renderLoadingState() : error && !loading ? renderErrorState() : renderProfileContent()}
     </SafeAreaView>
   )
 }
@@ -594,6 +683,37 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   pendingButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  requestButtonsContainer: {
+    flexDirection: "row",
+    marginBottom: 24,
+  },
+  acceptButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#4CAF50",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  acceptButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  rejectButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ff4d4f",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  rejectButtonText: {
     color: "#fff",
     fontWeight: "600",
     marginLeft: 8,
