@@ -48,7 +48,6 @@ export default function BudgetSummary() {
       description,
       price: parseFloat(price),
       event_id: eventId,
-      added_by: user.data.user.id,
     });
 
     if (!error) {
@@ -224,8 +223,9 @@ const styles = StyleSheet.create({
   },
   
   sectionTitle: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 18,
+    color: 'black',
+    fontWeight: '500',
     marginLeft: 6,
   },
   
@@ -248,8 +248,9 @@ const styles = StyleSheet.create({
   },
   
   summaryLabel: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 16,
+    color: 'black',
+    fontWeight: '400',
   },
   
   summaryAmount: {
@@ -259,8 +260,9 @@ const styles = StyleSheet.create({
   },
   
   expensesTitle: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 18,
+    color: 'black',
+    fontWeight:'500',
     marginBottom: 12,
   },
   
