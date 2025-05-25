@@ -308,9 +308,9 @@ export default function EventDetailScreen() {
             <Text style={styles.budgetLabel}>Per person:</Text>
             <Text style={styles.budgetValue}>₱ 7,000</Text>
           </View>
-          <TouchableOpacity>
-            <Text style={styles.viewFullBudgetText}>View Full Budget</Text>
-          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push(`/events/${id}/budget-summary`)}>
+        <Text style={styles.viewFullBudgetText}>View Full Budget</Text>
+      </TouchableOpacity>
         </View>
 
         <TouchableOpacity 
