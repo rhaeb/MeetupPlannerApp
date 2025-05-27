@@ -187,16 +187,22 @@ export default function EventDetailScreen() {
             source={{ uri: event.picture || "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YmVhY2h8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60" }}
             style={styles.eventImage}
           />
-          <View style={styles.bannerOverlay}>
-            <Text style={styles.eventTitle}>{event.name}</Text>
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>
-                {event.status === 'planned' ? 'Planning' : 
-                 event.status === 'active' ? 'Confirmed' : 
-                 event.status === 'completed' ? 'Completed' : 'Cancelled'}
-              </Text>
-            </View>
-          </View>
+
+  {/* Your banner overlay content on top */}
+      <View style={styles.gradientLayer1} />
+      <View style={styles.gradientLayer2} />
+      <View style={styles.gradientLayer3} />
+
+       <View style={styles.bannerOverlay}>
+        <Text style={styles.eventTitle}>{event.name}</Text>
+        <View style={styles.statusBadge}>
+          <Text style={styles.statusText}>
+            {event.status === 'planned' ? 'Planning' :
+            event.status === 'active' ? 'Confirmed' :
+            event.status === 'completed' ? 'Completed' : 'Cancelled'}
+          </Text>
+       </View> 
+     </View>
         </View>
 
         <View style={styles.detailsContainer}>
@@ -402,11 +408,38 @@ const styles = StyleSheet.create({
   bannerOverlay: {
     position: "absolute",
     bottom: 0,
+    left: 16,
+    right: 16,
+    paddingVertical: 15,
+  },
+
+  gradientLayer1: {
+    position: "absolute",
+    top: "55%",
     left: 0,
     right: 0,
-    padding: 16,
-    backgroundColor: "rgba(0,0,0,0.3)",
+    height: "60%",
+    backgroundColor: "rgba(0, 0, 0, 0.42)",
+    opacity: 0.7,
   },
+  gradientLayer2: {
+    position: "absolute",
+    top: "57%",
+    left: 0,
+    right: 0,
+    height: "60%",
+    backgroundColor: "rgba(0, 0, 0, 0.72)",
+    opacity: 0.6,
+  },
+  gradientLayer3: {
+    position: "absolute",
+    top: "80%",
+    left: 0,
+    right: 0,
+    height: "20%",
+    backgroundColor: "rgba(0, 0, 0, 0.49)",
+  },
+
   eventTitle: {
     fontSize: 24,
     fontWeight: "bold",
