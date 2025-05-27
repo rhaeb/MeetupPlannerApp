@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
     top: "65%",
     left: 0,
     right: 0,
-    height: "30%",
+    height: "60%",
     backgroundColor: "rgba(0, 0, 0, 0.25)",
     shadowOpacity: 0.25,
     
