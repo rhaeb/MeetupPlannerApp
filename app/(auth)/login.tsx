@@ -98,17 +98,17 @@ const styles = StyleSheet.create({
     flex: 0.7,
   },
   topContentContainer: {
-    flex: 0.8, // reduced from 1
+    flex: 0.9, // reduced from 1
     alignItems: 'center',
     justifyContent: 'center',
     paddingLeft: 30,
     paddingRight: 30,
     paddingTop: 30,
     paddingBottom: 0,
-    marginBottom: -40
+    marginBottom: 0
   },
   bottomContainer: {
-    flex: 0.4, // increased from 0.3
+    flex: 0.2, // increased from 0.3
     backgroundColor: 'white',
     alignItems: 'center',
     justifyContent: 'flex-start',
