@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { expenseController } from '../../../controllers/expenseController';
 import { supabase } from '../../../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
+import { Alert } from 'react-native';
 
 export default function BudgetSummary() {
   const { id } = useLocalSearchParams();
@@ -56,6 +57,31 @@ export default function BudgetSummary() {
       setModalVisible(false);
     }
   };
+  const handleDeleteExpense = (expId: string) => {
+  Alert.alert(
+    'Confirm Delete',
+    'Are you sure you want to delete this expense?',
+    [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          const { error } = await expenseController.deleteExpense(expId);
+          if (!error) {
+            fetchExpenses(); // Refresh list after deletion
+          } else {
+            console.error('Error deleting expense:', error);
+          }
+        },
+      },
+    ]
+  );
+};
+
 
   return (
     <ScrollView style={styles.container}>
@@ -99,18 +125,24 @@ export default function BudgetSummary() {
         <Text style={styles.expensesTitle}>Expenses</Text>
         
         {expenses.map((item) => (
-          <View key={item.exp_id} style={styles.expenseItem}>
-            <View style={styles.expenseContent}>
-              <View style={styles.expenseInfo}>
-                <Text style={styles.expenseTitle}>{item.title}</Text>
-                {item.description && (
-                  <Text style={styles.expenseDescription}>{item.description}</Text>
-                )}
-              </View>
-              <Text style={styles.expensePrice}>₱ {item.price.toLocaleString()}</Text>
-            </View>
-          </View>
-        ))}
+  <View key={item.exp_id} style={styles.expenseItem}>
+    <View style={styles.expenseContent}>
+      <View style={styles.expenseInfo}>
+        <Text style={styles.expenseTitle}>{item.title}</Text>
+        {item.description && (
+          <Text style={styles.expenseDescription}>{item.description}</Text>
+        )}
+      </View>
+
+      <View style={{ alignItems: 'flex-end' }}>
+        <Text style={styles.expensePrice}>₱ {item.price.toLocaleString()}</Text>
+        <TouchableOpacity onPress={() => handleDeleteExpense(item.exp_id)} style={{ marginTop: 8 }}>
+          <Ionicons name="trash" size={20} color="#FF3B30" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+))}
       </View>
 
       {/* Add Expense Modal */}
