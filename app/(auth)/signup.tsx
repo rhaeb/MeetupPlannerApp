@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     marginBottom: -70
   },
   bottomContainer: {
-    flex: 0.4,
+    flex: 0.2,
     backgroundColor: 'white',
     alignItems: 'center',
     justifyContent: 'flex-start',
