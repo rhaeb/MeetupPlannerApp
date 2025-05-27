@@ -287,7 +287,7 @@ export default function EventDetailScreen() {
             <Text style={styles.actionText}>Polls</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity onPress={() => router.push(`/events/${id}/budget-summary`)} style={styles.actionButton}>
             <MaterialIcons name="attach-money" size={24} color="#0B5E42" />
             <Text style={styles.actionText}>Budget</Text>
           </TouchableOpacity>
