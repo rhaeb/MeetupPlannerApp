@@ -187,16 +187,23 @@ export default function EventDetailScreen() {
             source={{ uri: event.picture || "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YmVhY2h8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60" }}
             style={styles.eventImage}
           />
-          <View style={styles.bannerOverlay}>
-            <Text style={styles.eventTitle}>{event.name}</Text>
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>
-                {event.status === 'planned' ? 'Planning' : 
-                 event.status === 'active' ? 'Confirmed' : 
-                 event.status === 'completed' ? 'Completed' : 'Cancelled'}
-              </Text>
-            </View>
-          </View>
+        <View style={styles.gradientLayer1} />
+        <View style={styles.gradientLayer2} />
+        <View style={styles.gradientLayer3} />
+        <View style={styles.gradientLayer4} />
+        <View style={styles.gradientLayer5} />
+        {/* Your actual content goes here */}
+
+       <View style={styles.bannerOverlay}>
+        <Text style={styles.eventTitle}>{event.name}</Text>
+        <View style={styles.statusBadge}>
+          <Text style={styles.statusText}>
+            {event.status === 'planned' ? 'Planning' :
+            event.status === 'active' ? 'Confirmed' :
+            event.status === 'completed' ? 'Completed' : 'Cancelled'}
+          </Text>
+       </View> 
+     </View>
         </View>
 
         <View style={styles.detailsContainer}>
@@ -402,11 +409,64 @@ const styles = StyleSheet.create({
   bannerOverlay: {
     position: "absolute",
     bottom: 0,
+    left: 16,
+    right: 16,
+    paddingVertical: 15,
+  },
+  gradientLayer1: {
+    position: "absolute",
+    top: "60%",
     left: 0,
     right: 0,
-    padding: 16,
-    backgroundColor: "rgba(0,0,0,0.3)",
+    height: "60%",
+    backgroundColor: "rgba(0, 0, 0, 0.15)",
+    opacity: 0.7,
+    elevation: 20,
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
+    shadowRadius: 10.84,  
   },
+  gradientLayer2: {
+    position: "absolute",
+    top: "63%",
+    left: 0,
+    right: 0,
+    height: "60%",
+    backgroundColor: "rgba(0, 0, 0, 0.28)",
+    opacity: 0.6,
+    elevation: 5,
+  },
+   gradientLayer3: {
+    position: "absolute",
+    top: "68%",
+    left: 0,
+    right: 0,
+    height: "60%",
+    backgroundColor: "rgba(0, 0, 0, 0.32)",
+    opacity: 0.6,
+    elevation: 50,
+    },
+  gradientLayer4: {
+    position: "absolute",
+    top: "70%",
+    left: 0,
+    right: 0,
+    height: "30%",
+    backgroundColor: "rgba(0, 0, 0, 0.25)",
+      shadowOpacity: 0.25,
+  },
+
+  gradientLayer5: {
+    position: "absolute",
+    top: "65%",
+    left: 0,
+    right: 0,
+    height: "30%",
+    backgroundColor: "rgba(0, 0, 0, 0.25)",
+    shadowOpacity: 0.25,
+    
+  },
+
   eventTitle: {
     fontSize: 24,
     fontWeight: "bold",
