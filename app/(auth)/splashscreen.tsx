@@ -1,18 +1,26 @@
-import React, { useEffect } from 'react';
-import { View, Image, StyleSheet } from 'react-native';
+import React, { useEffect ,useRef  } from 'react';
+import { View, Image, StyleSheet, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 
 export default function SplashScreen() {
   const router = useRouter();
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.replace('/login'); 
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 3000, 
+        useNativeDriver: true,
+      }).start(() => {
+        router.replace('/login'); 
+      });
     }, 3000);
 
     return () => clearTimeout(timer);
   }, []);
+
 
   return (
     <LinearGradient
