@@ -3,47 +3,72 @@ import { Poll, Answer, Voter } from '../types';
 
 export const pollController = {
   // Create a poll
-  async createPoll(pollData: Omit<Poll, 'poll_id'>, answers: string[]): Promise<{ error: any; data: { poll: Poll, answers: Answer[] } | null }> {
-    try {
-      // Insert poll
-      const { data: pollResult, error: pollError } = await supabase
-        .from('poll')
-        .insert([pollData])
-        .select()
-        .single();
-
-      if (pollError) throw pollError;
-
-      // Insert answers
-      const answerObjects = answers.map(answer => ({
-        answer,
-        poll_id: pollResult.poll_id
-      }));
-
-      const { data: answerResult, error: answerError } = await supabase
-        .from('answer')
-        .insert(answerObjects)
-        .select();
-
-      if (answerError) throw answerError;
-
-      return { 
-        data: { 
-          poll: pollResult, 
-          answers: answerResult 
-        }, 
-        error: null 
-      };
-    } catch (error) {
-      console.error('Create poll error:', error);
-      return { data: null, error };
-    }
+  // In pollController.ts
+async createPoll(
+  pollData: {
+    question: string;
+    event_id: number;
+    status?: string;
+    date_joined?: string;
+    final?: boolean | null;
   },
+  answers: string[]
+): Promise<{ error: any; data: any }> {
+  try {
+    // 1. First create the poll
+    const { data: pollResult, error: pollError } = await supabase
+      .from('poll')
+      .insert([{
+        ...pollData,
+        status: pollData.status || 'active',
+        date_joined: pollData.date_joined || new Date().toISOString(),
+        final: pollData.final || null,
+      }])
+      .select()
+      .single();
 
-  // Get poll by ID with answers and votes
-  async getPollById(pollId: string): Promise<{ error: any; data: { poll: Poll, answers: Answer[], votes: { [answerId: string]: number } } | null }> {
+    if (pollError) throw pollError;
+
+    // 2. Then create answers for this poll
+    const answerObjects = answers.map((answer) => ({
+      answer,
+      poll_id: pollResult.poll_id,
+    }));
+
+    const { data: answerResult, error: answerError } = await supabase
+      .from('answer')
+      .insert(answerObjects)
+      .select();
+
+    if (answerError) throw answerError;
+
+    return {
+      data: {
+        poll: pollResult,
+        answers: answerResult,
+      },
+      error: null,
+    };
+  } catch (error) {
+    console.error('Create poll error:', error);
+    return { data: null, error };
+  }
+},
+
+  // Get poll by ID with answers and vote counts
+  async getPollById(
+    pollId: string
+  ): Promise<{
+    error: any;
+    data:
+      | {
+          poll: Poll;
+          answers: Answer[];
+          votes: Record<string, number>;
+        }
+      | null;
+  }> {
     try {
-      // Get poll
       const { data: pollData, error: pollError } = await supabase
         .from('poll')
         .select('*')
@@ -52,7 +77,6 @@ export const pollController = {
 
       if (pollError) throw pollError;
 
-      // Get answers
       const { data: answerData, error: answerError } = await supabase
         .from('answer')
         .select('*')
@@ -60,27 +84,26 @@ export const pollController = {
 
       if (answerError) throw answerError;
 
-      // Get votes for each answer
-      const votes: { [answerId: string]: number } = {};
-      
-      for (const answer of answerData) {
-        const { data: voterData, error: voterError } = await supabase
-          .from('voter')
-          .select('voter_id')
-          .eq('answer_id', answer.answer_id);
-          
-        if (voterError) throw voterError;
-        
-        votes[answer.answer_id] = voterData.length;
+      const answerIds = answerData.map((a) => a.answer_id);
+
+      const { data: voteData, error: voteError } = await supabase
+        .from('voter')
+        .select('answer_id');
+
+      if (voteError) throw voteError;
+
+      const votes: Record<string, number> = {};
+      for (const id of answerIds) {
+        votes[id] = voteData.filter((v) => v.answer_id === id).length;
       }
 
-      return { 
-        data: { 
-          poll: pollData, 
+      return {
+        data: {
+          poll: pollData,
           answers: answerData,
-          votes
-        }, 
-        error: null 
+          votes,
+        },
+        error: null,
       };
     } catch (error) {
       console.error('Get poll error:', error);
@@ -88,28 +111,123 @@ export const pollController = {
     }
   },
 
-  // Get polls for an event
-  async getEventPolls(eventId: string): Promise<{ error: any; data: Poll[] | null }> {
+  // Get all polls for an event
+  // Get all polls for an event, including their answers and vote counts
+async getEventPolls(
+  eventId: string
+): Promise<{ error: any; data: Poll[] | null }> {
+  try {
+    const { data, error } = await supabase
+      .from('poll')
+      .select(`
+        *,
+        answer (
+          *,
+          voter (
+            voter_id
+          )
+        )
+      `)
+      .eq('event_id', eventId)
+      .order('date_joined', { ascending: false });
+
+    if (error) throw error;
+
+    return { data, error: null };
+  } catch (error) {
+    console.error('Get event polls error:', error);
+    return { data: null, error };
+  }
+},
+ /// Helper method: Fetch profiles by prof_id (voter_id = auth.users.id = prof_id)
+async getProfilesByUserIds(userIds: string[]) {
+  if (userIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('profile')
+    .select('*')
+    .in('user_id', userIds);   // Use user_id (UUID), not prof_id (integer)
+
+  if (error) {
+    console.error('Error fetching profiles:', error);
+    return [];
+  }
+  return data;
+},
+
+
+  async getAnswersByPollId(
+  pollId: string
+): Promise<{ error: any; data: any[] | null }> {
+  try {
+    // 1. Get answers for this poll
+    const { data: answers, error: answerError } = await supabase
+      .from('answer')
+      .select('answer_id, answer')
+      .eq('poll_id', pollId)
+      .order('answer_id', { ascending: true });
+
+    if (answerError) throw answerError;
+    if (!answers || answers.length === 0) return { data: [], error: null };
+
+    const answerIds = answers.map(a => a.answer_id);
+
+    // 2. Get voters who voted for these answers
+    const { data: voters, error: voterError } = await supabase
+      .from('voter')
+      .select('answer_id, voter_id')
+      .in('answer_id', answerIds);
+
+    if (voterError) throw voterError;
+
+    // 3. Get unique voter IDs to fetch profiles
+    const uniqueUserIds = Array.from(new Set(voters.map(v => v.voter_id)));
+
+    // 4. Fetch profiles for voters
+    const profiles = await this.getProfilesByUserIds(uniqueUserIds);
+
+    // 5. Combine answers with vote info and voter profiles
+    const totalVotes = voters.length;
+
+    const result = answers.map(answer => {
+      const votersForAnswer = voters
+        .filter(v => v.answer_id === answer.answer_id)
+        .map(voter => {
+          const profile = profiles.find(p => p.user_id === voter.voter_id);
+          return {
+            voter_id: voter.voter_id,
+            profile: profile || null,
+          };
+        });
+
+      const voteCount = votersForAnswer.length;
+      const percentage = totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0;
+
+      return {
+        ...answer,
+        votes: votersForAnswer,   // <-- voters with profile info
+        voteCount,
+        percentage,
+      };
+    });
+
+    return { data: result, error: null };
+  } catch (error) {
+    console.error('Get answers by poll ID error:', error);
+    return { data: null, error };
+  }
+},
+
+
+
+
+  // Vote on a poll (removes previous vote if exists)
+  async voteOnPoll(
+    answerId: string,
+    profId: string
+  ): Promise<{ error: any; data: Voter | null }> {
     try {
-      const { data, error } = await supabase
-        .from('poll')
-        .select('*')
-        .eq('event_id', eventId)
-        .order('date_joined', { ascending: false });
-
-      if (error) throw error;
-
-      return { data, error: null };
-    } catch (error) {
-      console.error('Get event polls error:', error);
-      return { data: null, error };
-    }
-  },
-
-  // Vote on a poll
-  async voteOnPoll(answerId: string, profId: string): Promise<{ error: any; data: Voter | null }> {
-    try {
-      // Get the poll ID for this answer
+      // Get the poll_id of the answer
       const { data: answerData, error: answerError } = await supabase
         .from('answer')
         .select('poll_id')
@@ -118,34 +236,34 @@ export const pollController = {
 
       if (answerError) throw answerError;
 
-      // Check if user has already voted on this poll
-      const { data: existingVotes, error: checkError } = await supabase
+      // Get all answer_ids for the poll
+      const { data: answerIdsData, error: idsError } = await supabase
+        .from('answer')
+        .select('answer_id')
+        .eq('poll_id', answerData.poll_id);
+
+      if (idsError) throw idsError;
+
+      const pollAnswerIds = answerIdsData.map((a) => a.answer_id);
+
+      // Delete previous votes by the voter in this poll
+      const { error: deleteError } = await supabase
         .from('voter')
-        .select('voter_id, answer:answer_id(poll_id)')
-        .eq('answer.poll_id', answerData.poll_id)
+        .delete()
+        .in('answer_id', pollAnswerIds)
         .eq('voter_id', profId);
 
-      if (checkError) throw checkError;
+      if (deleteError) throw deleteError;
 
-      // If already voted, remove previous vote
-      if (existingVotes && existingVotes.length > 0) {
-        for (const vote of existingVotes) {
-          const { error: deleteError } = await supabase
-            .from('voter')
-            .delete()
-            .eq('voter_id', vote.voter_id);
-            
-          if (deleteError) throw deleteError;
-        }
-      }
-
-      // Add new vote
+      // Insert new vote
       const { data, error } = await supabase
         .from('voter')
-        .insert([{
-          answer_id: answerId,
-          voter_id: profId
-        }])
+        .insert([
+          {
+            answer_id: answerId,
+            voter_id: profId,
+          },
+        ])
         .select()
         .single();
 
@@ -158,15 +276,26 @@ export const pollController = {
     }
   },
 
+  // ✅ New method: Cast Vote (same as voteOnPoll but abstracted for clarity)
+  async castVote({
+    answerId,
+    profileId,
+  }: {
+    answerId: string;
+    profileId: string;
+  }): Promise<{ error: any; data: Voter | null }> {
+    return this.voteOnPoll(answerId, profileId);
+  },
+
   // Close a poll
-  async closePoll(pollId: string, final: boolean = true): Promise<{ error: any; data: Poll | null }> {
+  async closePoll(
+    pollId: string,
+    final: boolean = true
+  ): Promise<{ error: any; data: Poll | null }> {
     try {
       const { data, error } = await supabase
         .from('poll')
-        .update({ 
-          status: 'closed',
-          final
-        })
+        .update({ status: 'closed', final })
         .eq('poll_id', pollId)
         .select()
         .single();
