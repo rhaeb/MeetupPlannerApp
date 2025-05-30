@@ -186,6 +186,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 30,
+    marginBottom:-50
   },
   logo: {
     width: 200,
@@ -228,7 +229,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   signInButton: {
-    backgroundColor: '#66bb6a',
+    backgroundColor: '#4CAF50',
     paddingVertical: 12,
     borderRadius: 25,
     width: '100%',
@@ -265,7 +266,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-start',
     paddingTop: 30,
-    paddingHorizontal: 20,
+    paddingHorizontal: 30,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
   },
