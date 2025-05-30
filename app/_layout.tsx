@@ -14,13 +14,13 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!loading) {
-      const authPaths = ['/login', '/forgotPassword', '/reset-password-confirm', '/signup'];
+      const authPaths = ['/splashscreen', '/login', '/forgotPassword', '/reset-password-confirm', '/signup'];
       const isAuthPage = authPaths.includes(pathname);
 
       if (user && isAuthPage) {
         router.replace('/tabs');
       } else if (!user && !isAuthPage) {
-        router.replace('/login'); // or '/(auth)' if that is your main auth route
+        router.replace('/splashscreen'); // or '/(auth)' if that is your main auth route
       }
     }
   }, [user, loading, pathname]);
