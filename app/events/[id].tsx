@@ -289,7 +289,7 @@ export default function EventDetailScreen() {
         </View>
 
         <View style={styles.actionsContainer}>
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity  onPress={() => router.push(`/events/${id}/polls`)} style={styles.actionButton}>
             <FontAwesome5 name="poll" size={20} color="#0B5E42" />
             <Text style={styles.actionText}>Polls</Text>
           </TouchableOpacity>
