@@ -1,6 +1,7 @@
 import { supabase } from "../lib/supabase"
 import type { Friend, FriendRequest, Profile } from "../types"
 import { notificationController } from "./notificationController"
+import { useNotifications } from "../contexts/NotificationsContext"
 
 export const friendController = {
   // Get all friends for a profile

@@ -16,11 +16,13 @@ import { Notification } from "../../types";
 import { notificationController } from "../../controllers/notificationController";
 import { eventController } from "../../controllers/eventController";
 import { useAuth } from "../../hooks/useAuth";
+import { useNotifications } from "../../contexts/NotificationsContext";
 
 export default function NotificationDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { profile } = useAuth();
+  const { refreshNotifications } = useNotifications();
   const [notification, setNotification] = useState<Notification | null>(null);
   const [relatedEvent, setRelatedEvent] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -92,7 +94,10 @@ export default function NotificationDetailScreen() {
                 Alert.alert("Error", "Failed to delete notification");
                 return;
               }
-              
+
+              // Refresh notifications context
+              refreshNotifications();
+
               router.back();
             } catch (error) {
               console.error("Error in handleDeleteNotification:", error);

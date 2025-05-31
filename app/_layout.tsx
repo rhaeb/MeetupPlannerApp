@@ -6,6 +6,7 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
 import { ProfileProvider } from '../contexts/ProfileContext';
 import { EventsProvider } from '../contexts/EventsContext';
+import { NotificationsProvider } from '../contexts/NotificationsContext';
 
 export default function RootLayout() {
   const { user, loading } = useAuth();
@@ -34,15 +35,17 @@ export default function RootLayout() {
   }
 
   return (
-    <ProfileProvider>
-      <EventsProvider>
-      <StatusBar style="auto" />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="tabs" />
-      </Stack>
-      </EventsProvider>
-    </ProfileProvider>
+    <NotificationsProvider>
+      <ProfileProvider>
+        <EventsProvider>
+          <StatusBar style="auto" />
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="tabs" />
+          </Stack>
+        </EventsProvider>
+      </ProfileProvider>
+    </NotificationsProvider>
   );
 }
 

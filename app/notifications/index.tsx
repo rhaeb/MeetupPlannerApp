@@ -3,114 +3,20 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator }
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { notificationController } from "../../controllers/notificationController";
-import { useAuth } from "../../hooks/useAuth";
-import { Notification } from "../../types";
+import { useNotifications } from "../../contexts/NotificationsContext";
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const { profile } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    notifications,
+    loading,
+    refreshNotifications,
+    markNotificationAsRead,
+  } = useNotifications();
 
-  useEffect(() => {
-    fetchNotifications();
-  }, [profile]);
-
-  const fetchNotifications = async () => {
-    if (!profile) return;
-    
-    try {
-      setLoading(true);
-      const { data, error } = await notificationController.getUserNotifications(profile.prof_id);
-      
-      if (error) {
-        console.error("Error fetching notifications:", error);
-        return;
-      }
-      
-      if (data) {
-        setNotifications(data);
-      }
-    } catch (error) {
-      console.error("Error in fetchNotifications:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleMarkAsRead = async (notifId: string) => {
-    try {
-      // Navigate to the notification detail
-      router.push(`/notifications/${notifId}`);
-      
-      // Update the local state to mark as read
-      setNotifications(prevNotifications => 
-        prevNotifications.map(notif => 
-          notif.notif_id === notifId ? { ...notif, read: true } : notif
-        )
-      );
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
-    }
-  };
-
-  const getIconForType = (type: string) => {
-    switch (type) {
-      case "invite":
-        return "mail-outline";
-      case "reminder":
-        return "alarm-outline";
-      case "update":
-        return "refresh-outline";
-      case "rsvp":
-        return "person-add-outline";
-      case "message":
-        return "chatbubble-outline";
-      case "event":
-        return "calendar-outline";
-      default:
-        return "notifications-outline";
-    }
-  };
-
-  const getIconBackgroundColor = (type: string) => {
-    switch (type) {
-      case "invite":
-        return "#4CAF50"; // Green
-      case "reminder":
-        return "#FF9800"; // Orange
-      case "update":
-        return "#2196F3"; // Blue
-      case "rsvp":
-        return "#9C27B0"; // Purple
-      case "message":
-        return "#E91E63"; // Pink
-      case "event":
-        return "#0B5E42"; // Teal
-      default:
-        return "#757575"; // Gray
-    }
-  };
-
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffSec = Math.floor(diffMs / 1000);
-    const diffMin = Math.floor(diffSec / 60);
-    const diffHour = Math.floor(diffMin / 60);
-    const diffDay = Math.floor(diffHour / 24);
-    
-    if (diffDay > 0) {
-      return diffDay === 1 ? "Yesterday" : `${diffDay} days ago`;
-    } else if (diffHour > 0) {
-      return `${diffHour} ${diffHour === 1 ? "hour" : "hours"} ago`;
-    } else if (diffMin > 0) {
-      return `${diffMin} ${diffMin === 1 ? "minute" : "minutes"} ago`;
-    } else {
-      return "Just now";
-    }
+  const handleNotificationPress = async (notifId) => {
+    await markNotificationAsRead(notifId);
+    router.push(`/notifications/${notifId}`);
   };
 
   if (loading) {
@@ -149,20 +55,21 @@ export default function NotificationsScreen() {
               styles.notificationItem,
               !item.read && styles.unreadNotification,
             ]}
-            onPress={() => handleMarkAsRead(item.notif_id)}
+            onPress={() => handleNotificationPress(item.notif_id)}
+            activeOpacity={0.7}
           >
             <View
               style={[
                 styles.iconContainer,
-                { backgroundColor: getIconBackgroundColor(item.type || "default") },
+                { backgroundColor: "#4CAF50" },
               ]}
             >
-              <Ionicons name={getIconForType(item.type || "default")} size={20} color="#fff" />
+              <Ionicons name="notifications-outline" size={20} color="#fff" />
             </View>
             <View style={styles.notificationContent}>
               <Text style={styles.notificationTitle}>{item.title}</Text>
               <Text style={styles.notificationMessage}>{item.content}</Text>
-              <Text style={styles.notificationTime}>{formatTimeAgo(item.date)}</Text>
+              <Text style={styles.notificationTime}>{item.date}</Text>
             </View>
             {!item.read && <View style={styles.unreadDot} />}
           </TouchableOpacity>
@@ -175,7 +82,7 @@ export default function NotificationsScreen() {
           </View>
         }
         refreshing={loading}
-        onRefresh={fetchNotifications}
+        onRefresh={refreshNotifications}
       />
     </SafeAreaView>
   );
