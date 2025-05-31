@@ -23,8 +23,10 @@ export default function LoginScreen() {
       return;
     }
 
-    // Wait for the session to update in useAuth
-    router.replace('/tabs');
+    // Wait for session/context update before navigating
+    setTimeout(() => {
+      router.replace('/tabs');
+    }, 500);
   };
 
   const goToSignup = () => router.replace('/signup');
