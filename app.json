@@ -5,7 +5,7 @@
     "main": "node_modules/expo-router/entry",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./app/assets/logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -18,7 +18,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./app/assets/logo.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.khent1229.meetupplanner"
