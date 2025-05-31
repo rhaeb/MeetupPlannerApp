@@ -39,6 +39,7 @@ export default function ChatScreen() {
   const [isEventChat, setIsEventChat] = useState(false)
   const [sending, setSending] = useState(false)
   const [loadingTimeout, setLoadingTimeout] = useState(false)
+  const [eventInfo, setEventInfo] = useState(null)
 
   const flatListRef = useRef<FlatList>(null)
   const subscriptionRef = useRef<any>(null)
@@ -100,22 +101,35 @@ export default function ChatScreen() {
     }
   }, [messages])
 
+  useEffect(() => {
+    if (type === "event" && id) {
+      eventController.getEventById(id).then(({ data }) => {
+        setEventInfo(data)
+      })
+    }
+  }, [type, id])
+
+  // --- Fetch chat info (event or friend) ---
   const fetchChatInfo = async (chatId: string) => {
     try {
       if (type === "event") {
+        console.log("Fetching event info for event_id:", chatId)
         const { data, error } = await eventController.getEventById(chatId)
         if (error) {
           console.error("Error fetching event:", error)
           Alert.alert("Error", "Failed to load event information")
         } else {
+          console.log("Fetched event info:", data)
           setChatInfo(data)
         }
       } else {
+        console.log("Fetching friend profile for prof_id:", chatId)
         const { data, error } = await profileController.getProfileById(chatId)
         if (error) {
           console.error("Error fetching profile:", error)
           Alert.alert("Error", "Failed to load profile information")
         } else {
+          console.log("Fetched friend profile:", data)
           setChatInfo(data)
         }
       }
@@ -126,8 +140,10 @@ export default function ChatScreen() {
     }
   }
 
+  // --- Fetch messages ---
   const fetchMessages = async (chatId: string) => {
     if (!profile) {
+      console.warn("No profile loaded, skipping fetchMessages")
       return
     }
 
@@ -135,17 +151,23 @@ export default function ChatScreen() {
       let messagesData: ChatMessage[] = []
 
       if (type === "event") {
+        console.log("Fetching event messages for event_id:", chatId)
         const { data, error } = await messageController.getEventMessages(chatId)
         if (error) {
-          // handle error
+          console.error("Error fetching event messages:", error)
         } else if (data) {
+          console.log("Fetched event messages:", data)
           messagesData = data
         }
       } else {
-        const { data, error } = await messageController.getFriendMessages(profile.prof_id, chatId)
+        const friendId = Number(chatId)
+        const myId = Number(profile.prof_id)
+        console.log("Fetching friend messages for", myId, friendId)
+        const { data, error } = await messageController.getFriendMessages(myId, friendId)
         if (error && error.code !== "PGRST116" && error.message !== "No messages found") {
-          // handle error
+          console.error("Error fetching friend messages:", error)
         } else if (data) {
+          console.log("Fetched friend messages:", data)
           messagesData = data
         }
       }
@@ -202,6 +224,7 @@ export default function ChatScreen() {
     }
   }
 
+  // --- Send message ---
   const sendMessage = async () => {
     const stringId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : null
 
@@ -217,20 +240,20 @@ export default function ChatScreen() {
         friend_id: type === "friend" ? stringId : null,
         event_id: type === "event" ? stringId : null,
       }
-
+      console.log("Sending message:", messageData)
       const { data, error } = await messageController.sendMessage(messageData)
 
       if (error) {
         console.error("Error sending message:", error)
-        Alert.alert("Error", "Failed to send message")
+        Alert.alert("Error", "Failed to send message: " + (error.message || JSON.stringify(error)))
       } else {
+        console.log("Message sent:", data)
         setNewMessage("")
-        // Optimistically add the sent message to the chat
         setMessages((prev) => [
           ...prev,
           {
             ...messageData,
-            message_id: data?.message_id || Math.random().toString(), // fallback if no id returned
+            message_id: data?.message_id || Math.random().toString(),
             created_at: new Date().toISOString(),
             sender: profile,
           },
@@ -326,6 +349,8 @@ export default function ChatScreen() {
     )
   }
 
+  console.log("chatInfo in header:", chatInfo)
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -333,16 +358,36 @@ export default function ChatScreen() {
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <View style={styles.headerProfile}>
-          <Image source={{ uri: getChatAvatar() }} style={styles.avatar} />
+          <Image
+            source={{
+              uri:
+                type === "event"
+                  ? (chatInfo as Event)?.picture || "https://ui-avatars.com/api/?name=Event&background=random"
+                  : getAvatarUri(chatInfo as Profile),
+            }}
+            style={styles.avatar}
+          />
           <View>
-            <Text style={styles.headerName}>{getChatTitle()}</Text>
-            {/* <Text style={styles.headerStatus}>{getChatSubtitle()}</Text> */}
+            <Text style={styles.headerName}>
+              {type === "event"
+                ? (chatInfo as Event)?.name || "Event Chat"
+                : (chatInfo as Profile)?.name || "Chat"}
+            </Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.moreButton}>
-          <Ionicons name="ellipsis-vertical" size={24} color="#333" />
-        </TouchableOpacity>
       </View>
+
+      {type === "event" && eventInfo && (
+        <View style={{ flexDirection: "row", alignItems: "center", padding: 15 }}>
+          <Image
+            source={{
+              uri: eventInfo.picture || "https://ui-avatars.com/api/?name=Event&background=random",
+            }}
+            style={{ width: 40, height: 40, borderRadius: 20, marginRight: 10 }}
+          />
+          <Text style={{ fontWeight: "bold", fontSize: 18 }}>{eventInfo.name}</Text>
+        </View>
+      )}
 
       <FlatList
         ref={flatListRef}
@@ -358,9 +403,9 @@ export default function ChatScreen() {
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
         style={styles.inputContainer}
       >
-        <TouchableOpacity style={styles.attachButton}>
+        {/* <TouchableOpacity style={styles.attachButton}>
           <Ionicons name="add-circle-outline" size={24} color="#4CAF50" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         <TextInput
           style={styles.input}
           value={newMessage}

@@ -10,7 +10,7 @@ export default function EventChatScreen() {
   useEffect(() => {
     // Fix: Don't return the router.replace call
     if (id) {
-      router.replace(`/chat/${id}?type=event`)
+      router.push(`/chat/${id}?type=event`)
     }
   }, [id, router])
 
