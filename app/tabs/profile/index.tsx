@@ -209,9 +209,9 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        {/* <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Text style={styles.logoutButtonText}>Log Out</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         
         {/* Add some space at the bottom */}
         <View style={{ height: 40 }} />
