@@ -21,6 +21,7 @@ import { useAuth } from "../../hooks/useAuth"
 import { messageController } from "../../controllers/messageController"
 import { profileController } from "../../controllers/profileController"
 import { eventController } from "../../controllers/eventController"
+import { useProfile } from "../../contexts/ProfileContext"
 import type { Message, Profile, Event } from "../../types"
 
 interface ChatMessage extends Message {
@@ -30,11 +31,10 @@ interface ChatMessage extends Message {
 export default function ChatScreen() {
   const router = useRouter()
   const { id, type = "friend" } = useLocalSearchParams() // type can be 'friend' or 'event'
-  const { profile: currentUserProfile } = useAuth()
+  const { profile, loading } = useProfile() // <-- use ProfileContext
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState("")
-  const [loading, setLoading] = useState(true)
   const [chatInfo, setChatInfo] = useState<Profile | Event | null>(null)
   const [isEventChat, setIsEventChat] = useState(false)
   const [sending, setSending] = useState(false)
@@ -43,28 +43,30 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null)
   const subscriptionRef = useRef<any>(null)
 
+  // Add a safety timeout to prevent infinite loading
+  useEffect(() => {
+    if (loading && !loadingTimeout) {
+      const timer = setTimeout(() => {
+        setLoadingTimeout(true)
+        if (loading) {
+          Alert.alert("Timeout", "Failed to load chat. Please check your connection and try again.")
+        }
+      }, 10000) // 10 seconds timeout
+
+      return () => clearTimeout(timer)
+    }
+  }, [loading, loadingTimeout])
+
   useEffect(() => {
     const stringId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : null
 
     if (!stringId) {
-      return (
-        <SafeAreaView style={styles.container}>
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Invalid chat ID. Please go back and try again.</Text>
-          </View>
-        </SafeAreaView>
-      )
+      return
     }
 
-    if (!currentUserProfile) {
+    if (!profile) {
       console.error("ChatScreen: No currentUserProfile found from useAuth.")
-      return (
-        <SafeAreaView style={styles.container}>
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Unable to load your profile. Please log in again.</Text>
-          </View>
-        </SafeAreaView>
-      )
+      return
     }
 
     console.log("Setting up chat with ID:", stringId, "Type:", type)
@@ -73,16 +75,21 @@ export default function ChatScreen() {
     fetchMessages(stringId)
     setupRealtimeSubscription(stringId)
 
+    // Fix: Proper cleanup function that doesn't try to call methods directly
     return () => {
       if (subscriptionRef.current) {
-        if (typeof subscriptionRef.current.unsubscribe === "function") {
-          subscriptionRef.current.unsubscribe()
-        } else if (typeof subscriptionRef.current.destroy === "function") {
-          subscriptionRef.current.destroy()
+        try {
+          // Try to unsubscribe if the method exists
+          if (typeof subscriptionRef.current.unsubscribe === "function") {
+            subscriptionRef.current.unsubscribe()
+          }
+          // Don't try to call destroy() as it doesn't exist
+        } catch (error) {
+          console.error("Error cleaning up subscription:", error)
         }
       }
     }
-  }, [id, type, currentUserProfile])
+  }, [id, type, profile])
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -120,29 +127,24 @@ export default function ChatScreen() {
   }
 
   const fetchMessages = async (chatId: string) => {
-    if (!currentUserProfile) {
-      console.error("fetchMessages: Missing currentUserProfile.")
-      setLoading(false)
+    if (!profile) {
       return
     }
 
     try {
-      setLoading(true)
       let messagesData: ChatMessage[] = []
 
       if (type === "event") {
         const { data, error } = await messageController.getEventMessages(chatId)
         if (error) {
-          console.error("Error fetching event messages:", error)
-          Alert.alert("Error", "Failed to load messages")
+          // handle error
         } else if (data) {
           messagesData = data
         }
       } else {
-        const { data, error } = await messageController.getFriendMessages(currentUserProfile.prof_id, chatId)
-        if (error) {
-          console.error("Error fetching friend messages:", error)
-          Alert.alert("Error", "Failed to load messages")
+        const { data, error } = await messageController.getFriendMessages(profile.prof_id, chatId)
+        if (error && error.code !== "PGRST116" && error.message !== "No messages found") {
+          // handle error
         } else if (data) {
           messagesData = data
         }
@@ -159,12 +161,10 @@ export default function ChatScreen() {
     } catch (error) {
       console.error("Error in fetchMessages:", error)
       Alert.alert("Error", "An unexpected error occurred")
-    } finally {
-      setLoading(false)
     }
   }
 
-  const setupRealtimeSubscription = (chatId: string) => {
+  const setupRealtimeSubscription = (chatId: string | number) => {
     if (type === "event") {
       subscriptionRef.current = messageController.subscribeToEventMessages(chatId, (newMessage) => {
         fetchSenderInfo(newMessage).then((messageWithSender) => {
@@ -172,16 +172,20 @@ export default function ChatScreen() {
         })
       })
     } else {
-      subscriptionRef.current = messageController.subscribeToFriendMessages(chatId, (newMessage) => {
-        if (
-          (newMessage.sender_id === currentUserProfile?.prof_id && newMessage.friend_id === chatId) ||
-          (newMessage.sender_id === chatId && newMessage.friend_id === currentUserProfile?.prof_id)
-        ) {
-          fetchSenderInfo(newMessage).then((messageWithSender) => {
-            setMessages((prev) => [...prev, messageWithSender])
-          })
+      subscriptionRef.current = messageController.subscribeToFriendMessages(
+        profile.prof_id,
+        chatId,
+        (newMessage) => {
+          if (
+            (newMessage.sender_id == profile.prof_id && newMessage.friend_id == chatId) ||
+            (newMessage.sender_id == chatId && newMessage.friend_id == profile.prof_id)
+          ) {
+            fetchSenderInfo(newMessage).then((messageWithSender) => {
+              setMessages((prev) => [...prev, messageWithSender])
+            })
+          }
         }
-      })
+      )
     }
   }
 
@@ -201,11 +205,7 @@ export default function ChatScreen() {
   const sendMessage = async () => {
     const stringId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : null
 
-    if (!newMessage.trim() || !currentUserProfile || !stringId || sending) {
-      if (!newMessage.trim()) console.warn("sendMessage: No message to send.")
-      if (!currentUserProfile) console.error("sendMessage: No currentUserProfile.")
-      if (!stringId) console.error("sendMessage: No valid chat id.")
-      if (sending) console.warn("sendMessage: Already sending.")
+    if (!newMessage.trim() || !profile || !stringId || sending) {
       return
     }
 
@@ -213,18 +213,28 @@ export default function ChatScreen() {
       setSending(true)
       const messageData = {
         message: newMessage.trim(),
-        sender_id: currentUserProfile.prof_id,
+        sender_id: profile.prof_id,
         friend_id: type === "friend" ? stringId : null,
         event_id: type === "event" ? stringId : null,
       }
 
-      const { error } = await messageController.sendMessage(messageData)
+      const { data, error } = await messageController.sendMessage(messageData)
 
       if (error) {
         console.error("Error sending message:", error)
         Alert.alert("Error", "Failed to send message")
       } else {
         setNewMessage("")
+        // Optimistically add the sent message to the chat
+        setMessages((prev) => [
+          ...prev,
+          {
+            ...messageData,
+            message_id: data?.message_id || Math.random().toString(), // fallback if no id returned
+            created_at: new Date().toISOString(),
+            sender: profile,
+          },
+        ])
       }
     } catch (error) {
       console.error("Error in sendMessage:", error)
@@ -240,7 +250,7 @@ export default function ChatScreen() {
   }
 
   const isMyMessage = (message: ChatMessage) => {
-    return message.sender_id === currentUserProfile?.prof_id
+    return message.sender_id === profile?.prof_id
   }
 
   const getMessageSenderName = (message: ChatMessage) => {
@@ -316,22 +326,6 @@ export default function ChatScreen() {
     )
   }
 
-  // Add a safety timeout to prevent infinite loading
-  useEffect(() => {
-    if (loading && !loadingTimeout) {
-      const timer = setTimeout(() => {
-        setLoadingTimeout(true)
-        if (loading) {
-          setLoading(false)
-          console.log("Loading timeout triggered")
-          Alert.alert("Timeout", "Failed to load chat. Please check your connection and try again.")
-        }
-      }, 10000) // 10 seconds timeout
-
-      return () => clearTimeout(timer)
-    }
-  }, [loading, loadingTimeout])
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -342,7 +336,7 @@ export default function ChatScreen() {
           <Image source={{ uri: getChatAvatar() }} style={styles.avatar} />
           <View>
             <Text style={styles.headerName}>{getChatTitle()}</Text>
-            <Text style={styles.headerStatus}>{getChatSubtitle()}</Text>
+            {/* <Text style={styles.headerStatus}>{getChatSubtitle()}</Text> */}
           </View>
         </View>
         <TouchableOpacity style={styles.moreButton}>
@@ -434,10 +428,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#333",
   },
-  headerStatus: {
-    fontSize: 12,
-    color: "#4CAF50",
-  },
+  // headerStatus: {
+  //   fontSize: 12,
+  //   color: "#4CAF50",
+  // },
   moreButton: {
     padding: 5,
   },

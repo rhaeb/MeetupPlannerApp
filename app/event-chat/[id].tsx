@@ -8,8 +8,10 @@ export default function EventChatScreen() {
   const { id } = useLocalSearchParams()
 
   useEffect(() => {
-    // Just call router.replace, don't return it
-    router.replace(`/chat/${id}?type=event`)
+    // Fix: Don't return the router.replace call
+    if (id) {
+      router.replace(`/chat/${id}?type=event`)
+    }
   }, [id, router])
 
   return null

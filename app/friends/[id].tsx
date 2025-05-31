@@ -19,13 +19,13 @@ import { Ionicons } from "@expo/vector-icons"
 import { profileController } from "../../controllers/profileController"
 import { friendController } from "../../controllers/friendController"
 import { eventController } from "../../controllers/eventController"
-import { useAuth } from "../../hooks/useAuth"
+import { useProfile } from "../../contexts/ProfileContext"
 import type { Profile } from "../../types"
 
 export default function ProfileScreen() {
   const router = useRouter()
   const { id } = useLocalSearchParams()
-  const { profile: currentUserProfile } = useAuth()
+  const { profile: loggedInProfile } = useProfile() // <-- use ProfileContext
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -66,7 +66,7 @@ export default function ProfileScreen() {
     ).start()
 
     // Reset error and set loading when starting to fetch
-    if (id && currentUserProfile) {
+    if (id && loggedInProfile) {
       setError(null)
       setLoading(true)
       fetchProfileData()
@@ -82,14 +82,14 @@ export default function ProfileScreen() {
         friendChangesSubscription.current.unsubscribe()
       }
     }
-  }, [id, currentUserProfile])
+  }, [id, loggedInProfile])
 
   const setupSubscriptions = () => {
-    if (!currentUserProfile || !id) return
+    if (!loggedInProfile || !id) return
 
     // Subscribe to friend requests
     friendRequestSubscription.current = friendController.subscribeToFriendRequests(
-      currentUserProfile.prof_id,
+      loggedInProfile.prof_id,
       (payload) => {
         console.log("Friend request change:", payload)
         checkFriendshipStatus()
@@ -98,7 +98,7 @@ export default function ProfileScreen() {
 
     // Subscribe to friend changes
     friendChangesSubscription.current = friendController.subscribeToFriendChanges(
-      currentUserProfile.prof_id,
+      loggedInProfile.prof_id,
       (payload) => {
         console.log("Friend change:", payload)
         checkFriendshipStatus()
@@ -108,8 +108,8 @@ export default function ProfileScreen() {
   }
 
   const fetchProfileData = async () => {
-    // Don't set error if id or currentUserProfile is missing, just return
-    if (!id || !currentUserProfile) {
+    // Don't set error if id or loggedInProfile is missing, just return
+    if (!id || !loggedInProfile) {
       return
     }
 
@@ -141,10 +141,10 @@ export default function ProfileScreen() {
   }
 
   const checkFriendshipStatus = async () => {
-    if (!currentUserProfile || !id) return
+    if (!loggedInProfile || !id) return
 
     try {
-      const { data, error } = await friendController.checkFriendRequestStatus(currentUserProfile.prof_id, id as string)
+      const { data, error } = await friendController.checkFriendRequestStatus(loggedInProfile.prof_id, id as string)
 
       if (error) {
         console.error("Error checking friendship status:", error)
@@ -200,10 +200,10 @@ export default function ProfileScreen() {
   }
 
   const handleAddFriend = async () => {
-    if (!currentUserProfile || !profile) return
+    if (!loggedInProfile || !profile) return
 
     try {
-      const { error } = await friendController.sendFriendRequest(currentUserProfile.prof_id, profile.prof_id)
+      const { error } = await friendController.sendFriendRequest(loggedInProfile.prof_id, profile.prof_id)
 
       if (error) {
         console.error("Error sending friend request:", error)
@@ -221,7 +221,7 @@ export default function ProfileScreen() {
   }
 
   const handleRemoveFriend = async () => {
-    if (!currentUserProfile || !profile) return
+    if (!loggedInProfile || !profile) return
 
     Alert.alert("Remove Friend", `Are you sure you want to remove ${profile.name} from your friends?`, [
       { text: "Cancel", style: "cancel" },
@@ -230,7 +230,7 @@ export default function ProfileScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            const { error } = await friendController.removeFriend(currentUserProfile.prof_id, profile.prof_id)
+            const { error } = await friendController.removeFriend(loggedInProfile.prof_id, profile.prof_id)
 
             if (error) {
               console.error("Error removing friend:", error)
@@ -332,7 +332,7 @@ export default function ProfileScreen() {
   )
 
   const renderFriendshipButton = () => {
-    if (currentUserProfile?.prof_id === profile?.prof_id) {
+    if (loggedInProfile?.prof_id === profile?.prof_id) {
       return null // Don't show any button for own profile
     }
 

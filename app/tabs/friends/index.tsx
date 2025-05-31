@@ -17,14 +17,14 @@ import {
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
-import { useAuth } from "../../../hooks/useAuth"
+import { useProfile } from "../../../contexts/ProfileContext"
 import { friendController } from "../../../controllers/friendController"
 import { profileController } from "../../../controllers/profileController"
 import type { Profile } from "../../../types"
 
 export default function FriendsScreen() {
   const router = useRouter()
-  const { profile: currentUserProfile } = useAuth()
+  const { profile: loggedInProfile } = useProfile() // <-- use ProfileContext
   const [searchQuery, setSearchQuery] = useState("")
   const [friends, setFriends] = useState<Profile[]>([])
   const [suggestedProfiles, setSuggestedProfiles] = useState<Profile[]>([])
@@ -40,7 +40,7 @@ export default function FriendsScreen() {
   const friendChangesSubscription = useRef<any>(null)
 
   useEffect(() => {
-    if (currentUserProfile) {
+    if (loggedInProfile) {
       fetchFriends()
       fetchPendingRequests()
       fetchSuggestedProfiles()
@@ -56,14 +56,14 @@ export default function FriendsScreen() {
         friendChangesSubscription.current.unsubscribe()
       }
     }
-  }, [currentUserProfile])
+  }, [loggedInProfile])
 
   const setupSubscriptions = () => {
-    if (!currentUserProfile) return
+    if (!loggedInProfile) return
 
     // Subscribe to friend requests
     friendRequestSubscription.current = friendController.subscribeToFriendRequests(
-      currentUserProfile.prof_id,
+      loggedInProfile.prof_id,
       (payload) => {
         console.log("Friend request change:", payload)
         fetchPendingRequests()
@@ -73,7 +73,7 @@ export default function FriendsScreen() {
 
     // Subscribe to friend changes
     friendChangesSubscription.current = friendController.subscribeToFriendChanges(
-      currentUserProfile.prof_id,
+      loggedInProfile.prof_id,
       (payload) => {
         console.log("Friend change:", payload)
         fetchFriends()
@@ -97,11 +97,11 @@ export default function FriendsScreen() {
   }, [searchQuery])
 
   const fetchFriends = async () => {
-    if (!currentUserProfile) return
+    if (!loggedInProfile) return
 
     try {
       setLoading(true)
-      const { data, error } = await friendController.getFriends(currentUserProfile.prof_id)
+      const { data, error } = await friendController.getFriends(loggedInProfile.prof_id)
 
       if (error) {
         console.error("Error fetching friends:", error)
@@ -118,10 +118,10 @@ export default function FriendsScreen() {
   }
 
   const fetchPendingRequests = async () => {
-    if (!currentUserProfile) return
+    if (!loggedInProfile) return
 
     try {
-      const { data, error } = await friendController.getPendingRequests(currentUserProfile.prof_id)
+      const { data, error } = await friendController.getPendingRequests(loggedInProfile.prof_id)
 
       if (error) {
         console.error("Error fetching pending requests:", error)
@@ -134,7 +134,7 @@ export default function FriendsScreen() {
   }
 
   const fetchSuggestedProfiles = async () => {
-    if (!currentUserProfile) return
+    if (!loggedInProfile) return
 
     try {
       const { data, error } = await profileController.searchProfiles("")
@@ -144,7 +144,7 @@ export default function FriendsScreen() {
       } else if (data) {
         // Filter out current user and existing friends
         let filtered = data.filter((p) => {
-          if (p.prof_id === currentUserProfile.prof_id) return false
+          if (p.prof_id === loggedInProfile.prof_id) return false
           if (friends.some((f) => f.prof_id === p.prof_id)) return false
           return true
         })
@@ -154,14 +154,14 @@ export default function FriendsScreen() {
           .map((profile) => {
             const pending = pendingRequests.find(
               (r) =>
-                (r.requester_id === currentUserProfile.prof_id && r.requested_id === profile.prof_id) ||
-                (r.requested_id === currentUserProfile.prof_id && r.requester_id === profile.prof_id)
+                (r.requester_id === loggedInProfile.prof_id && r.requested_id === profile.prof_id) ||
+                (r.requested_id === loggedInProfile.prof_id && r.requester_id === profile.prof_id)
             )
             let rank = 2 // default: no pending
             if (pending) {
-              if (pending.requested_id === currentUserProfile.prof_id) {
+              if (pending.requested_id === loggedInProfile.prof_id) {
                 rank = 0 // received
-              } else if (pending.requester_id === currentUserProfile.prof_id) {
+              } else if (pending.requester_id === loggedInProfile.prof_id) {
                 rank = 1 // sent
               }
             }
@@ -192,7 +192,7 @@ export default function FriendsScreen() {
         Alert.alert("Error", "Failed to search profiles")
       } else if (data) {
         // Filter out current user
-        const filtered = data.filter((p) => p.prof_id !== currentUserProfile?.prof_id)
+        const filtered = data.filter((p) => p.prof_id !== loggedInProfile?.prof_id)
         setSearchResults(filtered)
       }
     } catch (error) {
@@ -216,10 +216,10 @@ export default function FriendsScreen() {
   }
 
   const handleAddFriend = async (profileId: string) => {
-    if (!currentUserProfile) return
+    if (!loggedInProfile) return
 
     try {
-      const { error } = await friendController.sendFriendRequest(currentUserProfile.prof_id, profileId)
+      const { error } = await friendController.sendFriendRequest(loggedInProfile.prof_id, profileId)
 
       if (error) {
         console.error("Error sending friend request:", error)
@@ -231,7 +231,7 @@ export default function FriendsScreen() {
         setPendingRequests((prev) => [
           ...prev,
           {
-            requester_id: currentUserProfile.prof_id,
+            requester_id: loggedInProfile.prof_id,
             requested_id: profileId,
           },
         ])
@@ -246,7 +246,7 @@ export default function FriendsScreen() {
   }
 
   const handleRemoveFriend = async (friendId: string) => {
-    if (!currentUserProfile) return
+    if (!loggedInProfile) return
 
     Alert.alert("Remove Friend", "Are you sure you want to remove this friend?", [
       { text: "Cancel", style: "cancel" },
@@ -255,7 +255,7 @@ export default function FriendsScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            const { error } = await friendController.removeFriend(currentUserProfile.prof_id, friendId)
+            const { error } = await friendController.removeFriend(loggedInProfile.prof_id, friendId)
 
             if (error) {
               console.error("Error removing friend:", error)
@@ -304,15 +304,15 @@ export default function FriendsScreen() {
     // Check if there's a pending request
     const hasPendingRequest = pendingRequests.some(
       (r) =>
-        (r.requester_id === currentUserProfile?.prof_id && r.requested_id === profileId) ||
-        (r.requested_id === currentUserProfile?.prof_id && r.requester_id === profileId),
+        (r.requester_id === loggedInProfile?.prof_id && r.requested_id === profileId) ||
+        (r.requested_id === loggedInProfile?.prof_id && r.requester_id === profileId),
     )
 
     if (hasPendingRequest) {
       const request = pendingRequests.find(
         (r) =>
-          (r.requester_id === currentUserProfile?.prof_id && r.requested_id === profileId) ||
-          (r.requested_id === currentUserProfile?.prof_id && r.requester_id === profileId),
+          (r.requester_id === loggedInProfile?.prof_id && r.requested_id === profileId) ||
+          (r.requested_id === loggedInProfile?.prof_id && r.requester_id === profileId),
       )
       return { status: "pending", requestId: request?.friend_req_id }
     }
@@ -350,12 +350,12 @@ export default function FriendsScreen() {
     // Find if there's a pending request between current user and this profile
     const pendingRequest = pendingRequests.find(
       (r) =>
-        (r.requester_id === currentUserProfile?.prof_id && r.requested_id === profile.prof_id) ||
-        (r.requested_id === currentUserProfile?.prof_id && r.requester_id === profile.prof_id),
+        (r.requester_id === loggedInProfile?.prof_id && r.requested_id === profile.prof_id) ||
+        (r.requested_id === loggedInProfile?.prof_id && r.requester_id === profile.prof_id),
     )
     const isPending = !!pendingRequest
-    const isSentByMe = pendingRequest && pendingRequest.requester_id === currentUserProfile?.prof_id
-    const isReceivedByMe = pendingRequest && pendingRequest.requested_id === currentUserProfile?.prof_id
+    const isSentByMe = pendingRequest && pendingRequest.requester_id === loggedInProfile?.prof_id
+    const isReceivedByMe = pendingRequest && pendingRequest.requested_id === loggedInProfile?.prof_id
 
     return (
       <TouchableOpacity

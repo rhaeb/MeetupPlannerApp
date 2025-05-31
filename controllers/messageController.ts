@@ -27,19 +27,22 @@ export const messageController = {
     }
   },
 
-  // Get messages between two friends
-  async getFriendMessages(currentUserId: string, friendId: string): Promise<{ error: any; data: Message[] | null }> {
+  // Get messages between two friends - Fixed to handle prof_id properly
+  async getFriendMessages(
+    currentUserProfId: string | number,
+    friendProfId: string | number,
+  ): Promise<{ error: any; data: Message[] | null }> {
     try {
+      // Use prof_id directly (no need to fetch user_id)
       const { data, error } = await supabase
         .from("message")
-        .select("*") // Remove the sender join
+        .select("*")
         .or(
-          `and(sender_id.eq.${currentUserId},friend_id.eq.${friendId}),and(sender_id.eq.${friendId},friend_id.eq.${currentUserId})`,
+          `and(sender_id.eq.${currentUserProfId},friend_id.eq.${friendProfId}),and(sender_id.eq.${friendProfId},friend_id.eq.${currentUserProfId})`,
         )
         .is("event_id", null)
         .order("created_at", { ascending: true })
 
-      // If no messages, data will be [], not null
       if (error) throw error
 
       return { data: data || [], error: null }
@@ -54,7 +57,7 @@ export const messageController = {
     try {
       const { data, error } = await supabase
         .from("message")
-        .select("*") // Remove the sender join
+        .select("*")
         .eq("event_id", eventId)
         .is("friend_id", null)
         .order("created_at", { ascending: true })
@@ -82,41 +85,24 @@ export const messageController = {
     }
   },
 
-  // Set up real-time messaging for friend conversations
-  subscribeToFriendMessages(currentUserId: string, friendId: string, callback: (message: Message) => void) {
+  // Set up real-time messaging for friend conversations - Fixed to use auth user IDs
+  subscribeToFriendMessages(currentUserProfId: string | number, friendProfId: string | number, callback: (message: Message) => void) {
     return supabase
-      .channel(`friend-messages-${currentUserId}-${friendId}`)
+      .channel(`friend-messages-${currentUserProfId}-${friendProfId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "message",
-          filter: `friend_id=eq.${friendId}`,
         },
         (payload) => {
           const newMessage = payload.new as Message
-          // Only trigger callback if the message is relevant to this conversation
+          // Compare prof_id directly
           if (
-            (newMessage.sender_id === currentUserId && newMessage.friend_id === friendId) ||
-            (newMessage.sender_id === friendId && newMessage.friend_id === currentUserId)
+            (newMessage.sender_id == currentUserProfId && newMessage.friend_id == friendProfId) ||
+            (newMessage.sender_id == friendProfId && newMessage.friend_id == currentUserProfId)
           ) {
-            callback(newMessage)
-          }
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "message",
-          filter: `friend_id=eq.${currentUserId}`,
-        },
-        (payload) => {
-          const newMessage = payload.new as Message
-          // Only trigger callback if the message is from the friend we're chatting with
-          if (newMessage.sender_id === friendId) {
             callback(newMessage)
           }
         },
@@ -144,8 +130,19 @@ export const messageController = {
   },
 
   // Get latest message for each conversation (for messages list)
-  async getLatestMessages(currentUserId: string): Promise<{ error: any; data: any[] | null }> {
+  async getLatestMessages(currentUserProfId: string): Promise<{ error: any; data: any[] | null }> {
     try {
+      // Get the auth user ID from profile
+      const { data: currentUserProfile, error: profileError } = await supabase
+        .from("profile")
+        .select("user_id")
+        .eq("prof_id", currentUserProfId)
+        .single()
+
+      if (profileError) throw profileError
+
+      const currentUserId = currentUserProfile.user_id
+
       // Get latest friend messages
       const { data: friendMessages, error: friendError } = await supabase
         .from("message")
