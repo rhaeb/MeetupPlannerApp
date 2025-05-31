@@ -1,32 +1,28 @@
-import { supabase } from '../lib/supabase';
-import { Event, Attend, Profile } from '../types';
-import * as FileSystem from 'expo-file-system';
+import { supabase } from "../lib/supabase"
+import type { Event, Attend, Profile } from "../types"
+import * as FileSystem from "expo-file-system"
 
 export const eventController = {
   // Create a new event
-  async createEvent(eventData: Omit<Event, 'event_id'>): Promise<{ error: any; data: Event | null }> {
+  async createEvent(eventData: Omit<Event, "event_id">): Promise<{ error: any; data: Event | null }> {
     try {
-      const { data, error } = await supabase
-        .from('event')
-        .insert([eventData])
-        .select()
-        .single();
+      const { data, error } = await supabase.from("event").insert([eventData]).select().single()
 
-      if (error) throw error;
+      if (error) throw error
 
       // Automatically add the host as an attendee
-      await supabase
-        .from('attend')
-        .insert([{
+      await supabase.from("attend").insert([
+        {
           prof_id: eventData.hoster_id,
           event_id: data.event_id,
-          status: 'going'
-        }]);
+          status: "going",
+        },
+      ])
 
-      return { data, error: null };
+      return { data, error: null }
     } catch (error) {
-      console.error('Create event error:', error);
-      return { data: null, error };
+      console.error("Create event error:", error)
+      return { data: null, error }
     }
   },
 
@@ -34,36 +30,31 @@ export const eventController = {
   async getEventById(eventId: string): Promise<{ error: any; data: Event | null }> {
     try {
       const { data, error } = await supabase
-        .from('event')
-        .select('*, profile:hoster_id(*)')
-        .eq('event_id', eventId)
-        .single();
+        .from("event")
+        .select("*, profile:hoster_id(*)")
+        .eq("event_id", eventId)
+        .single()
 
-      if (error) throw error;
+      if (error) throw error
 
-      return { data, error: null };
+      return { data, error: null }
     } catch (error) {
-      console.error('Get event error:', error);
-      return { data: null, error };
+      console.error("Get event error:", error)
+      return { data: null, error }
     }
   },
 
   // Update event
   async updateEvent(eventId: string, updates: Partial<Event>): Promise<{ error: any; data: Event | null }> {
     try {
-      const { data, error } = await supabase
-        .from('event')
-        .update(updates)
-        .eq('event_id', eventId)
-        .select()
-        .single();
+      const { data, error } = await supabase.from("event").update(updates).eq("event_id", eventId).select().single()
 
-      if (error) throw error;
+      if (error) throw error
 
-      return { data, error: null };
+      return { data, error: null }
     } catch (error) {
-      console.error('Update event error:', error);
-      return { data: null, error };
+      console.error("Update event error:", error)
+      return { data: null, error }
     }
   },
 
@@ -71,25 +62,19 @@ export const eventController = {
   async deleteEvent(eventId: string): Promise<{ error: any }> {
     try {
       // First, delete all attend rows for this event
-      const { error: attendError } = await supabase
-        .from('attend')
-        .delete()
-        .eq('event_id', eventId);
+      const { error: attendError } = await supabase.from("attend").delete().eq("event_id", eventId)
 
-      if (attendError) throw attendError;
+      if (attendError) throw attendError
 
       // Then, delete the event itself
-      const { error } = await supabase
-        .from('event')
-        .delete()
-        .eq('event_id', eventId);
+      const { error } = await supabase.from("event").delete().eq("event_id", eventId)
 
-      if (error) throw error;
+      if (error) throw error
 
-      return { error: null };
+      return { error: null }
     } catch (error) {
-      console.error('Delete event error:', error);
-      return { error };
+      console.error("Delete event error:", error)
+      return { error }
     }
   },
 
@@ -97,17 +82,17 @@ export const eventController = {
   async getHostedEvents(profId: string): Promise<{ error: any; data: Event[] | null }> {
     try {
       const { data, error } = await supabase
-        .from('event')
-        .select('*')
-        .eq('hoster_id', profId)
-        .order('date_start', { ascending: false });
+        .from("event")
+        .select("*")
+        .eq("hoster_id", profId)
+        .order("date_start", { ascending: false })
 
-      if (error) throw error;
+      if (error) throw error
 
-      return { data, error: null };
+      return { data, error: null }
     } catch (error) {
-      console.error('Get hosted events error:', error);
-      return { data: null, error };
+      console.error("Get hosted events error:", error)
+      return { data: null, error }
     }
   },
 
@@ -115,7 +100,7 @@ export const eventController = {
   async getAttendingEvents(profId: string): Promise<{ error: any; data: Event[] | null }> {
     try {
       const { data, error } = await supabase
-        .from('attend')
+        .from("attend")
         .select(`
           event:event_id (
             *,
@@ -123,223 +108,228 @@ export const eventController = {
             event_id
           )
         `)
-        .eq('prof_id', profId);
+        .eq("prof_id", profId)
 
-      if (error) throw error;
+      if (error) throw error
 
       // Get all event IDs
-      const eventIds = data.map(item => item.event.event_id);
+      const eventIds = data.map((item) => item.event.event_id)
 
       // Fetch attendee counts for all events in one query
       const { data: countsData, error: countsError } = await supabase
-        .from('attend')
-        .select('event_id', { count: 'exact', head: false })
-        .in('event_id', eventIds);
+        .from("attend")
+        .select("event_id", { count: "exact", head: false })
+        .in("event_id", eventIds)
 
-      if (countsError) throw countsError;
+      if (countsError) throw countsError
 
       // Map event_id to count
-      const countsMap = {};
-      eventIds.forEach(eventId => {
+      const countsMap = {}
+      eventIds.forEach((eventId) => {
         // Count how many times this event_id appears in countsData
-        countsMap[eventId] = countsData.filter(row => row.event_id === eventId).length;
-      });
+        countsMap[eventId] = countsData.filter((row) => row.event_id === eventId).length
+      })
 
       // Attach attendee count to each event
-      const events = data.map(item => ({
-        ...item.event,
-        attendees_count: countsMap[item.event.event_id] || 1
-      })).sort((a, b) => {
-        return new Date(a.date_start).getTime() - new Date(b.date_start).getTime();
-      });
+      const events = data
+        .map((item) => ({
+          ...item.event,
+          attendees_count: countsMap[item.event.event_id] || 1,
+        }))
+        .sort((a, b) => {
+          return new Date(a.date_start).getTime() - new Date(b.date_start).getTime()
+        })
 
-      return { data: events, error: null };
+      return { data: events, error: null }
     } catch (error) {
-      console.error('Get attending events error:', error);
-      return { data: null, error };
+      console.error("Get attending events error:", error)
+      return { data: null, error }
     }
   },
 
   // Get upcoming events
   async getUpcomingEvents(profId: string): Promise<{ error: any; data: Event[] | null }> {
     try {
-      const today = new Date().toISOString().split('T')[0];
-      
-      const { data, error } = await supabase
-        .from('attend')
-        .select('event:event_id(*)')
-        .eq('prof_id', profId)
-        .eq('status', 'going')
-        .gte('event.date_start', today)
-        .order('event.date_start', { ascending: true });
+      const today = new Date().toISOString().split("T")[0]
 
-      if (error) throw error;
+      const { data, error } = await supabase
+        .from("attend")
+        .select("event:event_id(*)")
+        .eq("prof_id", profId)
+        .eq("status", "going")
+        .gte("event.date_start", today)
+        .order("event.date_start", { ascending: true })
+
+      if (error) throw error
 
       // Extract events from the nested structure
-      const events = data.map(item => item.event);
+      const events = data.map((item) => item.event)
 
-      return { data: events, error: null };
+      return { data: events, error: null }
     } catch (error) {
-      console.error('Get upcoming events error:', error);
-      return { data: null, error };
+      console.error("Get upcoming events error:", error)
+      return { data: null, error }
     }
   },
 
   // Upload event picture (profile-style)
   async uploadEventPicture(eventId: string, pictureUri: string): Promise<{ error: any; data: { url: string } | null }> {
     try {
-      const fileName = `event-${eventId}-${Date.now()}.jpg`;
-      const filePath = `events/${fileName}`;
+      const fileName = `event-${eventId}-${Date.now()}.jpg`
+      const filePath = `events/${fileName}`
 
       // Read the file into a binary buffer (base64)
       const fileData = await FileSystem.readAsStringAsync(pictureUri, {
         encoding: FileSystem.EncodingType.Base64,
-      });
+      })
 
-      const byteArray = Uint8Array.from(atob(fileData), (c) => c.charCodeAt(0));
+      const byteArray = Uint8Array.from(atob(fileData), (c) => c.charCodeAt(0))
 
-      const { data, error } = await supabase.storage
-        .from('event-pictures')
-        .upload(filePath, byteArray, {
-          contentType: 'image/jpeg',
-          upsert: true,
-        });
+      const { data, error } = await supabase.storage.from("event-pictures").upload(filePath, byteArray, {
+        contentType: "image/jpeg",
+        upsert: true,
+      })
 
-      if (error) throw error;
+      if (error) throw error
 
       // Get public URL
-      const { data: urlData } = supabase.storage.from('event-pictures').getPublicUrl(filePath);
+      const { data: urlData } = supabase.storage.from("event-pictures").getPublicUrl(filePath)
 
       // Update event with new picture URL
       const { error: updateError } = await supabase
-        .from('event')
+        .from("event")
         .update({ picture: urlData.publicUrl })
-        .eq('event_id', eventId);
+        .eq("event_id", eventId)
 
-      if (updateError) throw updateError;
+      if (updateError) throw updateError
 
-      return { data: { url: urlData.publicUrl }, error: null };
+      return { data: { url: urlData.publicUrl }, error: null }
     } catch (error) {
-      console.error('Upload event picture error:', error);
-      return { data: null, error };
+      console.error("Upload event picture error:", error)
+      return { data: null, error }
     }
   },
 
   // Add multiple attendees to an event
   async addAttendees(eventId: string, profIds: string[]): Promise<{ error: any; data: { count: number } | null }> {
     try {
-      const attendees = profIds.map(profId => ({
+      const attendees = profIds.map((profId) => ({
         prof_id: profId,
         event_id: eventId,
-        status: 'invited'
-      }));
-      
-      const { data, error } = await supabase
-        .from('attend')
-        .insert(attendees);
-      
-      if (error) throw error;
-      
-      return { data: { count: profIds.length }, error: null };
+        status: "invited",
+      }))
+
+      const { data, error } = await supabase.from("attend").insert(attendees)
+
+      if (error) throw error
+
+      return { data: { count: profIds.length }, error: null }
     } catch (error) {
-      console.error('Add attendees error:', error);
-      return { data: null, error };
+      console.error("Add attendees error:", error)
+      return { data: null, error }
     }
   },
 
   // RSVP to an event
-  async respondToEvent(profId: string, eventId: string, status: 'going' | 'maybe' | 'not_going'): Promise<{ error: any; data: Attend | null }> {
+  async respondToEvent(
+    profId: string,
+    eventId: string,
+    status: "going" | "maybe" | "not_going",
+  ): Promise<{ error: any; data: Attend | null }> {
     try {
       // Check if already responded
       const { data: existingResponse, error: checkError } = await supabase
-        .from('attend')
-        .select('*')
-        .eq('prof_id', profId)
-        .eq('event_id', eventId)
-        .maybeSingle();
+        .from("attend")
+        .select("*")
+        .eq("prof_id", profId)
+        .eq("event_id", eventId)
+        .maybeSingle()
 
-      if (checkError) throw checkError;
+      if (checkError) throw checkError
 
       if (existingResponse) {
         // Update existing response
         const { data, error } = await supabase
-          .from('attend')
+          .from("attend")
           .update({ status })
-          .eq('prof_id', profId)
-          .eq('event_id', eventId)
+          .eq("prof_id", profId)
+          .eq("event_id", eventId)
           .select()
-          .single();
+          .single()
 
-        if (error) throw error;
-        return { data, error: null };
+        if (error) throw error
+        return { data, error: null }
       } else {
         // Create new response
         const { data, error } = await supabase
-          .from('attend')
-          .insert([{
-            prof_id: profId,
-            event_id: eventId,
-            status
-          }])
+          .from("attend")
+          .insert([
+            {
+              prof_id: profId,
+              event_id: eventId,
+              status,
+            },
+          ])
           .select()
-          .single();
+          .single()
 
-        if (error) throw error;
-        return { data, error: null };
+        if (error) throw error
+        return { data, error: null }
       }
     } catch (error) {
-      console.error('Respond to event error:', error);
-      return { data: null, error };
+      console.error("Respond to event error:", error)
+      return { data: null, error }
     }
   },
 
   // Get attendees for an event
-  async getEventAttendees(eventId: string): Promise<{ error: any; data: { attendees: Profile[], maybes: Profile[], notGoing: Profile[], invited: Profile[] } | null }> {
+  async getEventAttendees(eventId: string): Promise<{
+    error: any
+    data: { attendees: Profile[]; maybes: Profile[]; notGoing: Profile[]; invited: Profile[] } | null
+  }> {
     try {
-      const { data, error } = await supabase
-        .from('attend')
-        .select('status, profile:prof_id(*)')
-        .eq('event_id', eventId);
+      const { data, error } = await supabase.from("attend").select("status, profile:prof_id(*)").eq("event_id", eventId)
 
-      if (error) throw error;
+      if (error) throw error
 
       // Group by status
-      const attendees = data.filter(a => a.status === 'going').map(a => a.profile);
-      const maybes = data.filter(a => a.status === 'maybe').map(a => a.profile);
-      const notGoing = data.filter(a => a.status === 'not_going').map(a => a.profile);
-      const invited = data.filter(a => a.status === 'invited').map(a => a.profile);
+      const attendees = data.filter((a) => a.status === "going").map((a) => a.profile)
+      const maybes = data.filter((a) => a.status === "maybe").map((a) => a.profile)
+      const notGoing = data.filter((a) => a.status === "not_going").map((a) => a.profile)
+      const invited = data.filter((a) => a.status === "invited").map((a) => a.profile)
 
-      return { 
-        data: { 
-          attendees, 
-          maybes, 
+      return {
+        data: {
+          attendees,
+          maybes,
           notGoing,
-          invited
-        }, 
-        error: null 
-      };
+          invited,
+        },
+        error: null,
+      }
     } catch (error) {
-      console.error('Get event attendees error:', error);
-      return { data: null, error };
+      console.error("Get event attendees error:", error)
+      return { data: null, error }
     }
   },
 
-  // Rate an event
-  async rateEvent(eventId: string, rating: number): Promise<{ error: any; data: Event | null }> {
+  // Rate an event (just update the event table's rating column)
+  async rateEvent(eventId: string, userRating: number): Promise<{ error: any; data: Event | null }> {
     try {
+      // Directly update the rating column in the event table
       const { data, error } = await supabase
-        .from('event')
-        .update({ rating })
-        .eq('event_id', eventId)
+        .from("event")
+        .update({ rating: userRating })
+        .eq("event_id", eventId)
         .select()
-        .single();
+        .single()
 
-      if (error) throw error;
+      if (error) throw error
 
-      return { data, error: null };
+      return { data, error: null }
     } catch (error) {
-      console.error('Rate event error:', error);
-      return { data: null, error };
+      console.error("Rate event error:", error)
+      return { data: null, error }
     }
   },
-};
+}
