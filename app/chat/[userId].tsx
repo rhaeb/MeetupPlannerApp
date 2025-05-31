@@ -30,7 +30,7 @@ interface ChatMessage extends Message {
 
 export default function ChatScreen() {
   const router = useRouter()
-  const { id, type = "friend" } = useLocalSearchParams() // type can be 'friend' or 'event'
+  const { userId, type = "friend" } = useLocalSearchParams() // <-- FIXED
   const { profile, loading } = useProfile() // <-- use ProfileContext
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -58,8 +58,7 @@ export default function ChatScreen() {
   }, [loading, loadingTimeout])
 
   useEffect(() => {
-    const stringId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : null
-
+    const stringId = typeof userId === "string" ? userId : Array.isArray(userId) ? userId[0] : null
     if (!stringId) {
       return
     }
@@ -89,7 +88,7 @@ export default function ChatScreen() {
         }
       }
     }
-  }, [id, type, profile])
+  }, [userId, type, profile])
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -203,7 +202,7 @@ export default function ChatScreen() {
   }
 
   const sendMessage = async () => {
-    const stringId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : null
+    const stringId = typeof userId === "string" ? userId : Array.isArray(userId) ? userId[0] : null
 
     if (!newMessage.trim() || !profile || !stringId || sending) {
       return
