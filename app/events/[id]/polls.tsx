@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+
+
 import {
   View,
   Text,
@@ -17,9 +19,12 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { pollController } from '../../../controllers/pollController';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
+import { Rating } from 'react-native-ratings';
+import { format, parseISO, isWithinInterval, parse } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
+const PH_TIME_ZONE = 'Asia/Manila';
 // Responsive breakpoints
 const isTablet = screenWidth >= 768;
 const isLargeScreen = screenWidth >= 1024;
@@ -56,7 +61,9 @@ export default function PollScreen() {
   const [userId, setUserId] = useState<string | null>(null);
   const [actionSheetVisible, setActionSheetVisible] = useState(false);
   const [selectedPoll, setSelectedPoll] = useState<any>(null);
-
+  const [eventDetails, setEventDetails] = useState<any>(null);
+const [userRating, setUserRating] = useState<number>(0);
+const [isRatingSubmitting, setIsRatingSubmitting] = useState(false);
   useEffect(() => {
     const getCurrentUser = async () => {
       const {
@@ -70,9 +77,23 @@ export default function PollScreen() {
   useEffect(() => {
     if (eventId) {
       fetchPolls();
+      fetchEventDetails();
     }
   }, [eventId, userId]);
+   const fetchEventDetails = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('event')
+        .select('*')
+        .eq('event_id', eventId)
+        .single();
 
+      if (error) throw error;
+      setEventDetails(data);
+    } catch (error) {
+      console.error('Error fetching event details:', error);
+    }
+  };
   const fetchPolls = async () => {
     if (!eventId) return;
 
@@ -135,6 +156,113 @@ export default function PollScreen() {
       setPolls([]);
     }
   };
+ const shouldShowRating = () => {
+  if (!eventDetails || !eventDetails.date_start || !eventDetails.date_end) {
+    return false;
+  }
+  
+  try {
+    // Get current date in Philippine Time (just the date portion)
+    const now = toZonedTime(new Date(), PH_TIME_ZONE);
+    const currentDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // Parse event dates (just the date portion)
+    const startDate = new Date(eventDetails.date_start);
+    const eventStartDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    
+    const endDate = new Date(eventDetails.date_end);
+    const eventEndDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+    
+    // Check if current date is between start and end dates (inclusive)
+    return currentDate >= eventStartDate && currentDate <= eventEndDate;
+  } catch (error) {
+    console.error('Error checking event dates:', error);
+    return false;
+  }
+};
+
+  const handleRateEvent = async () => {
+  if (!userId || !eventId || userRating === 0) return;
+  
+  setIsRatingSubmitting(true);
+  
+  try {
+    // Check for existing rating
+    const { data: existingRating, error: fetchError } = await supabase
+      .from('ratings')
+      .select('*')
+      .eq('event_id', eventId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
+
+    if (existingRating) {
+      // Update existing rating
+      const { error } = await supabase
+        .from('ratings')
+        .update({
+          rating: userRating,
+          created_at: new Date().toISOString()
+        })
+        .eq('id', existingRating.id);
+
+      if (error) throw error;
+    } else {
+      // Create new rating
+      const { error } = await supabase
+        .from('ratings')
+        .insert({
+          event_id: eventId,
+          user_id: userId,
+          rating: userRating,
+          created_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+    }
+    
+    Alert.alert('Success', 'Thank you for rating this event!');
+    setUserRating(0);
+  } catch (error) {
+    console.error('Error submitting rating:', error);
+    Alert.alert('Error', 'Failed to submit rating. Please try again.');
+  } finally {
+    setIsRatingSubmitting(false);
+  }
+};
+
+  const renderRatingSection = () => {
+  if (!shouldShowRating()) return null;
+  
+  return (
+    <View style={styles.ratingContainer}>
+      <Text style={styles.ratingTitle}>Rate the Experience</Text>
+      <View style={styles.starRatingContainer}>
+        <Rating
+          type="star"
+          ratingCount={5}
+          startingValue={userRating}
+          imageSize={isTablet ? 32 : 28}
+          onFinishRating={(rating) => setUserRating(rating)}
+          style={{ paddingVertical: 10 }}
+        />
+      </View>
+
+      {userRating > 0 && (
+        <TouchableOpacity
+          style={[styles.submitRatingButton, isRatingSubmitting && styles.submitButtonDisabled]}
+          onPress={handleRateEvent}
+          disabled={isRatingSubmitting}
+        >
+          <Text style={styles.submitRatingText}>
+            {isRatingSubmitting ? 'Submitting...' : 'Submit Rating'}
+          </Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
 
   const handleAddPoll = async () => {
     setSubmitting(true);
@@ -512,7 +640,10 @@ const getWinningAnswer = (answers: any[]) => {
               </Text>
             </View>
           ) : (
-            sortedPolls.map(renderPoll)
+            <>
+              {polls.map(renderPoll)}
+              {renderRatingSection()}
+            </>
           )}
         </ScrollView>
 
@@ -1102,4 +1233,47 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: '600',
   },
+   ratingContainer: {
+    backgroundColor: 'white',
+    borderRadius: isTablet ? 16 : 12,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  ratingTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: '600',
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  starRatingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  submitRatingButton: {
+    backgroundColor: '#3B82F6',
+    paddingVertical: spacing.md,
+    borderRadius: isTablet ? 12 : 10,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
+  submitRatingText: {
+    color: 'white',
+    fontSize: fontSize.md,
+    fontWeight: '600',
+  },
+  
+  
 });
