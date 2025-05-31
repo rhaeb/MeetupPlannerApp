@@ -689,7 +689,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.xxl,
   },
   newPollButton: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: 'green',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
