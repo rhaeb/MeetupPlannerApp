@@ -11,6 +11,8 @@ import {
   TouchableOpacity,
   Pressable,
   Alert,
+  Animated,
+  Dimensions,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { useRouter, useLocalSearchParams } from "expo-router"
@@ -19,6 +21,8 @@ import { eventController } from "../../controllers/eventController"
 import { expenseController } from "../../controllers/expenseController"
 import type { Event, Profile } from "../../types"
 import { useAuth } from "../../hooks/useAuth"
+
+const { width: screenWidth } = Dimensions.get("window")
 
 export default function EventDetailScreen() {
   const router = useRouter()
@@ -33,6 +37,8 @@ export default function EventDetailScreen() {
   const [userRating, setUserRating] = useState<number | null>(null)
   const [hasRated, setHasRated] = useState(false)
   const [averageRating, setAverageRating] = useState<number | null>(null)
+  const [modalAnimation] = useState(new Animated.Value(0))
+  const [selectedOption, setSelectedOption] = useState<string | null>(null)
 
   const fetchEventDetails = async () => {
     try {
@@ -99,22 +105,47 @@ export default function EventDetailScreen() {
     fetchEventDetails()
   }, [id, profile])
 
+  useEffect(() => {
+    if (showAttendanceModal) {
+      Animated.spring(modalAnimation, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 8,
+      }).start()
+    } else {
+      Animated.timing(modalAnimation, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start()
+    }
+  }, [showAttendanceModal])
+
   const handleAttendance = async (status: "going" | "maybe" | "not_going") => {
     if (!profile || !event) return
 
-    try {
-      const { error } = await eventController.respondToEvent(profile.prof_id, event.event_id, status)
+    setSelectedOption(status)
 
-      if (error) {
-        console.error("Error updating attendance:", error)
-        return
+    // Add a small delay for visual feedback
+    setTimeout(async () => {
+      try {
+        const { error } = await eventController.respondToEvent(profile.prof_id, event.event_id, status)
+
+        if (error) {
+          console.error("Error updating attendance:", error)
+          return
+        }
+
+        await fetchEventDetails()
+        setUserStatus(status)
+        setShowAttendanceModal(false)
+        setSelectedOption(null)
+      } catch (error) {
+        console.error("Error in handleAttendance:", error)
+        setSelectedOption(null)
       }
-
-      await fetchEventDetails()
-      setUserStatus(status)
-    } catch (error) {
-      console.error("Error in handleAttendance:", error)
-    }
+    }, 150)
   }
 
   const isEventLive = (event) => {
@@ -187,6 +218,58 @@ export default function EventDetailScreen() {
     }
   }, [event])
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "going":
+        return "checkmark-circle"
+      case "maybe":
+        return "help-circle"
+      case "not_going":
+        return "close-circle"
+      default:
+        return "person"
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "going":
+        return "#4CAF50"
+      case "maybe":
+        return "#FF9800"
+      case "not_going":
+        return "#F44336"
+      default:
+        return "#2196F3"
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "going":
+        return "I'm going!"
+      case "maybe":
+        return "Maybe"
+      case "not_going":
+        return "Can't make it"
+      default:
+        return "Invited"
+    }
+  }
+
+  const getStatusDescription = (status: string) => {
+    switch (status) {
+      case "going":
+        return "Confirm your attendance"
+      case "maybe":
+        return "You're not sure yet"
+      case "not_going":
+        return "You won't be attending"
+      default:
+        return "Respond to invitation"
+    }
+  }
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -245,13 +328,13 @@ export default function EventDetailScreen() {
     if (!timeStr) return ""
     // Handles both "HH:mm" and "HH:mm:ss" and trims spaces
     const [hourStr, minuteStr] = timeStr.trim().split(":")
-    let hour = parseInt(hourStr, 10)
+    const hour = Number.parseInt(hourStr, 10)
     const minute = minuteStr ? minuteStr.padStart(2, "0") : "00"
     let ampm = "AM"
     // Fix: treat time as UTC and convert to local time
     const date = new Date()
     date.setUTCHours(hour)
-    date.setUTCMinutes(parseInt(minute, 10))
+    date.setUTCMinutes(Number.parseInt(minute, 10))
     date.setUTCSeconds(0)
     let localHour = date.getHours()
     ampm = localHour >= 12 ? "PM" : "AM"
@@ -273,28 +356,93 @@ export default function EventDetailScreen() {
           </TouchableOpacity>
         )}
       </View>
+
       {showAttendanceModal && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Select Attendance Status</Text>
-            {["going", "maybe", "not_going"].map((status) => (
-              <TouchableOpacity
-                key={status}
-                style={styles.modalOption}
-                onPress={async () => {
-                  await handleAttendance(status as "going" | "maybe" | "not_going")
-                  setShowAttendanceModal(false)
-                }}
-              >
-                <Text style={styles.modalOptionText}>{status.replace("_", " ")}</Text>
+        <Animated.View
+          style={[
+            styles.modalOverlay,
+            {
+              opacity: modalAnimation,
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowAttendanceModal(false)}
+          />
+          <Animated.View
+            style={[
+              styles.modalContainer,
+              {
+                transform: [
+                  {
+                    scale: modalAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.8, 1],
+                    }),
+                  },
+                  {
+                    translateY: modalAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [50, 0],
+                    }),
+                  },
+                ],
+                opacity: modalAnimation,
+              },
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHandle} />
+              <Text style={styles.modalTitle}>Update Attendance</Text>
+              <Text style={styles.modalSubtitle}>Let others know if you're coming</Text>
+            </View>
+
+            <View style={styles.modalContent}>
+              {["going", "maybe", "not_going"].map((status) => (
+                <TouchableOpacity
+                  key={status}
+                  style={[
+                    styles.modalOption,
+                    userStatus === status && styles.modalOptionCurrent,
+                    selectedOption === status && styles.modalOptionSelected,
+                  ]}
+                  onPress={() => handleAttendance(status as "going" | "maybe" | "not_going")}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.modalOptionLeft}>
+                    <View style={[styles.modalOptionIcon, { backgroundColor: getStatusColor(status) + "20" }]}>
+                      <Ionicons name={getStatusIcon(status)} size={24} color={getStatusColor(status)} />
+                    </View>
+                    <View style={styles.modalOptionTextContainer}>
+                      <Text style={[styles.modalOptionText, userStatus === status && styles.modalOptionTextCurrent]}>
+                        {getStatusText(status)}
+                      </Text>
+                      <Text style={styles.modalOptionDescription}>{getStatusDescription(status)}</Text>
+                    </View>
+                  </View>
+
+                  {userStatus === status && (
+                    <View style={styles.currentStatusBadge}>
+                      <Ionicons name="checkmark" size={16} color="#fff" />
+                    </View>
+                  )}
+
+                  {selectedOption === status && <ActivityIndicator size="small" color={getStatusColor(status)} />}
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity style={styles.modalCancelButton} onPress={() => setShowAttendanceModal(false)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
-            ))}
-            <TouchableOpacity onPress={() => setShowAttendanceModal(false)}>
-              <Text style={styles.modalCancel}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+            </View>
+          </Animated.View>
+        </Animated.View>
       )}
+
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.bannerContainer}>
           <Image
@@ -342,11 +490,7 @@ export default function EventDetailScreen() {
 
           <View style={styles.detailItem}>
             <Ionicons name="time-outline" size={20} color="#0B5E42" style={styles.detailIcon} />
-            <Text style={styles.detailText}>
-              {event.time
-                ? `${formatTime(event.time)} Departure`
-                : "Departure"}
-            </Text>
+            <Text style={styles.detailText}>{event.time ? `${formatTime(event.time)} Departure` : "Departure"}</Text>
           </View>
 
           <View style={styles.detailItem}>
@@ -813,33 +957,130 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: "flex-end",
     zIndex: 999,
   },
+  modalBackdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
   modalContainer: {
-    backgroundColor: "white",
-    padding: 20,
-    borderRadius: 10,
-    width: "80%",
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 34, // Safe area padding for iPhone
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: -4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 16,
+  },
+  modalHeader: {
+    alignItems: "center",
+    paddingTop: 12,
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#e0e0e0",
+    borderRadius: 2,
+    marginBottom: 16,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#333",
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+  },
+  modalContent: {
+    paddingHorizontal: 24,
+    paddingVertical: 8,
   },
   modalOption: {
-    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginVertical: 4,
+    borderRadius: 16,
+    backgroundColor: "#f8f9fa",
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  modalOptionCurrent: {
+    backgroundColor: "#e8f5e9",
+    borderColor: "#4CAF50",
+  },
+  modalOptionSelected: {
+    backgroundColor: "#f0f0f0",
+    transform: [{ scale: 0.98 }],
+  },
+  modalOptionLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  modalOptionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  modalOptionTextContainer: {
+    flex: 1,
   },
   modalOptionText: {
     fontSize: 16,
-    textAlign: "center",
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 2,
   },
-  modalCancel: {
-    marginTop: 10,
-    color: "red",
-    textAlign: "center",
+  modalOptionTextCurrent: {
+    color: "#4CAF50",
+  },
+  modalOptionDescription: {
+    fontSize: 13,
+    color: "#666",
+  },
+  currentStatusBadge: {
+    backgroundColor: "#4CAF50",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalFooter: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+  },
+  modalCancelButton: {
+    paddingVertical: 16,
+    alignItems: "center",
+  },
+  modalCancelText: {
+    fontSize: 16,
+    color: "#666",
+    fontWeight: "500",
   },
   starsContainer: {
     flexDirection: "row",
