@@ -31,6 +31,14 @@
       "expo-font",
       "expo-secure-store"
     ],
-    "scheme": "meetupplanner"
+    "scheme": "meetupplanner",
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "48171680-3ad4-4ac1-a2b2-79a8f8756950"
+      }
+    }
   }
 }

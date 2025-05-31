@@ -30,7 +30,7 @@ interface ChatMessage extends Message {
 
 export default function ChatScreen() {
   const router = useRouter()
-  const { id, type = "friend" } = useLocalSearchParams() // type can be 'friend' or 'event'
+  const { userId, type = "friend" } = useLocalSearchParams() // type can be 'friend' or 'event'
   const { profile, loading } = useProfile() // <-- use ProfileContext
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -39,7 +39,6 @@ export default function ChatScreen() {
   const [isEventChat, setIsEventChat] = useState(false)
   const [sending, setSending] = useState(false)
   const [loadingTimeout, setLoadingTimeout] = useState(false)
-  const [eventInfo, setEventInfo] = useState(null)
 
   const flatListRef = useRef<FlatList>(null)
   const subscriptionRef = useRef<any>(null)
@@ -59,38 +58,35 @@ export default function ChatScreen() {
   }, [loading, loadingTimeout])
 
   useEffect(() => {
-    const stringId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : null
-
+    // Always get a string id
+    let stringId: string | null = null
+    if (typeof userId === "string") stringId = userId
+    else if (Array.isArray(userId) && userId.length > 0) stringId = userId[0]
     if (!stringId) {
+      console.error("No valid chat id found", userId)
+      setChatInfo({ name: "Event Not Found", picture: "", event_id: "" }) // fallback for header
       return
     }
-
     if (!profile) {
       console.error("ChatScreen: No currentUserProfile found from useAuth.")
       return
     }
-
-    console.log("Setting up chat with ID:", stringId, "Type:", type)
     setIsEventChat(type === "event")
     fetchChatInfo(stringId)
     fetchMessages(stringId)
     setupRealtimeSubscription(stringId)
-
-    // Fix: Proper cleanup function that doesn't try to call methods directly
     return () => {
       if (subscriptionRef.current) {
         try {
-          // Try to unsubscribe if the method exists
           if (typeof subscriptionRef.current.unsubscribe === "function") {
             subscriptionRef.current.unsubscribe()
           }
-          // Don't try to call destroy() as it doesn't exist
         } catch (error) {
           console.error("Error cleaning up subscription:", error)
         }
       }
     }
-  }, [id, type, profile])
+  }, [userId, type, profile])
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -101,40 +97,32 @@ export default function ChatScreen() {
     }
   }, [messages])
 
-  useEffect(() => {
-    if (type === "event" && id) {
-      eventController.getEventById(id).then(({ data }) => {
-        setEventInfo(data)
-      })
-    }
-  }, [type, id])
-
   // --- Fetch chat info (event or friend) ---
   const fetchChatInfo = async (chatId: string) => {
     try {
       if (type === "event") {
         console.log("Fetching event info for event_id:", chatId)
         const { data, error } = await eventController.getEventById(chatId)
-        if (error) {
+        if (error || !data) {
           console.error("Error fetching event:", error)
-          Alert.alert("Error", "Failed to load event information")
+          setChatInfo({ name: "Event Not Found", picture: "", event_id: chatId })
         } else {
-          console.log("Fetched event info:", data)
           setChatInfo(data)
         }
       } else {
-        console.log("Fetching friend profile for prof_id:", chatId)
         const { data, error } = await profileController.getProfileById(chatId)
-        if (error) {
-          console.error("Error fetching profile:", error)
-          Alert.alert("Error", "Failed to load profile information")
+        if (error || !data) {
+          setChatInfo({ name: "User Not Found", photo: "", prof_id: chatId })
         } else {
-          console.log("Fetched friend profile:", data)
           setChatInfo(data)
         }
       }
     } catch (error) {
       console.error("Error in fetchChatInfo:", error)
+      setChatInfo(type === "event"
+        ? { name: "Event Not Found", picture: "", event_id: chatId }
+        : { name: "User Not Found", photo: "", prof_id: chatId }
+      )
     } finally {
       setLoading(false)
     }
@@ -226,7 +214,7 @@ export default function ChatScreen() {
 
   // --- Send message ---
   const sendMessage = async () => {
-    const stringId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : null
+    const stringId = typeof userId === "string" ? userId : Array.isArray(userId) ? userId[0] : null
 
     if (!newMessage.trim() || !profile || !stringId || sending) {
       return
@@ -362,32 +350,20 @@ export default function ChatScreen() {
             source={{
               uri:
                 type === "event"
-                  ? (chatInfo as Event)?.picture || "https://ui-avatars.com/api/?name=Event&background=random"
-                  : getAvatarUri(chatInfo as Profile),
+                  ? (chatInfo && (chatInfo as Event).picture) || "https://ui-avatars.com/api/?name=Event&background=random"
+                  : chatInfo && getAvatarUri(chatInfo as Profile),
             }}
             style={styles.avatar}
           />
           <View>
             <Text style={styles.headerName}>
               {type === "event"
-                ? (chatInfo as Event)?.name || "Event Chat"
-                : (chatInfo as Profile)?.name || "Chat"}
+                ? (chatInfo && (chatInfo as Event).name) || "Event Chat"
+                : (chatInfo && (chatInfo as Profile).name) || "Chat"}
             </Text>
           </View>
         </View>
       </View>
-
-      {type === "event" && eventInfo && (
-        <View style={{ flexDirection: "row", alignItems: "center", padding: 15 }}>
-          <Image
-            source={{
-              uri: eventInfo.picture || "https://ui-avatars.com/api/?name=Event&background=random",
-            }}
-            style={{ width: 40, height: 40, borderRadius: 20, marginRight: 10 }}
-          />
-          <Text style={{ fontWeight: "bold", fontSize: 18 }}>{eventInfo.name}</Text>
-        </View>
-      )}
 
       <FlatList
         ref={flatListRef}
