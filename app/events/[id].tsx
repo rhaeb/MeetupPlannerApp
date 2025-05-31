@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { eventController } from "../../controllers/eventController";
+import { expenseController } from "../../controllers/expenseController";
 import { Event, Profile } from "../../types";
 import { useAuth } from "../../hooks/useAuth";
 import { useEvents } from "../../contexts/EventsContext";
@@ -27,6 +28,7 @@ export default function EventDetailScreen() {
   const [attendees, setAttendees] = useState<Profile[]>([]);
   const [userStatus, setUserStatus] = useState<'going' | 'maybe' | 'not_going' | 'invited'>('invited');
   const [loading, setLoading] = useState(true);
+  const [budget, setBudget] = useState<{ total: number; perPerson: number }>({ total: 0, perPerson: 0 });
 
   useEffect(() => {
     const fetchEventDetails = async () => {
@@ -69,6 +71,20 @@ export default function EventDetailScreen() {
           else if (isNotGoing) setUserStatus('not_going');
           else setUserStatus('invited');
         }
+
+        // Fetch budget summary
+        if (eventData) {
+          const { data: expenseData, error: expenseError } = await expenseController.getEventExpenses(eventData.event_id);
+          if (!expenseError && expenseData) {
+            const total = expenseData.total || 0;
+            // Avoid division by zero
+            const attendeeCount = (attendeesData?.attendees?.length || 1);
+            setBudget({
+              total,
+              perPerson: attendeeCount > 0 ? Math.round(total / attendeeCount) : 0,
+            });
+          }
+        }
       } catch (error) {
         console.error("Error in fetchEventDetails:", error);
       } finally {
@@ -104,6 +120,13 @@ export default function EventDetailScreen() {
     } catch (error) {
       console.error("Error in handleAttendance:", error);
     }
+  };
+
+  const isEventLive = (event) => {
+    const now = new Date();
+    const startDate = new Date(event.date_start);
+    const endDate = new Date(event.date_end);
+    return startDate <= now && now <= endDate;
   };
 
   if (loading) {
@@ -196,13 +219,19 @@ export default function EventDetailScreen() {
 
        <View style={styles.bannerOverlay}>
         <Text style={styles.eventTitle}>{event.name}</Text>
-        <View style={styles.statusBadge}>
-          <Text style={styles.statusText}>
-            {event.status === 'planned' ? 'Planning' :
-            event.status === 'active' ? 'Confirmed' :
-            event.status === 'completed' ? 'Completed' : 'Cancelled'}
-          </Text>
-       </View> 
+        {isEventLive(event) ? (
+          <View style={[styles.statusBadge, { backgroundColor: "#ff9800" }]}>
+            <Text style={[styles.statusText, { color: "#fff" }]}>Live now</Text>
+          </View>
+        ) : (
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusText}>
+              {event.status === 'planned' ? 'Planning' :
+              event.status === 'active' ? 'Confirmed' :
+              event.status === 'completed' ? 'Completed' : 'Cancelled'}
+            </Text>
+          </View>
+        )}
      </View>
         </View>
 
@@ -234,9 +263,9 @@ export default function EventDetailScreen() {
               <Ionicons name="people-outline" size={20} color="#0B5E42" />
               <Text style={styles.sectionTitle}>Attendees ({attendees.length})</Text>
             </View>
-            <TouchableOpacity>
+            {/* <TouchableOpacity>
               <Text style={styles.inviteMoreText}>Invite more</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
           
           <ScrollView 
@@ -309,25 +338,27 @@ export default function EventDetailScreen() {
           <Text style={styles.sectionTitle}>Budget Summary</Text>
           <View style={styles.budgetItem}>
             <Text style={styles.budgetLabel}>Total expenses:</Text>
-            <Text style={styles.budgetValue}>₱ 28,000</Text>
+            <Text style={styles.budgetValue}>₱ {budget.total.toLocaleString()}</Text>
           </View>
           <View style={styles.budgetItem}>
             <Text style={styles.budgetLabel}>Per person:</Text>
-            <Text style={styles.budgetValue}>₱ 7,000</Text>
+            <Text style={styles.budgetValue}>₱ {budget.perPerson.toLocaleString()}</Text>
           </View>
           <TouchableOpacity onPress={() => router.push(`/events/${id}/budget-summary`)}>
         <Text style={styles.viewFullBudgetText}>View Full Budget</Text>
       </TouchableOpacity>
         </View>
 
-        <TouchableOpacity 
-          style={styles.confirmButton}
-          onPress={() => handleAttendance('going')}
-        >
-          <Text style={styles.confirmButtonText}>
-            {userStatus === 'going' ? 'Update Attendance' : 'Confirm Attendance'}
-          </Text>
-        </TouchableOpacity>
+        {event.hoster_id !== profile?.prof_id && (
+          <TouchableOpacity 
+            style={styles.confirmButton}
+            onPress={() => handleAttendance('going')}
+          >
+            <Text style={styles.confirmButtonText}>
+              {userStatus === 'going' ? 'Update Attendance' : 'Confirm Attendance'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

@@ -15,15 +15,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../../hooks/useAuth";
 import { Event } from "../../../types";
-import { useEvents } from "../../../contexts/EventsContext"; // <-- Use EventsContext
+import { useEvents } from "../../../contexts/EventsContext";
 
 export default function EventsScreen() {
   const router = useRouter();
   const { profile, loading: authLoading } = useAuth();
-  const { events: allEvents, loading: eventsLoading } = useEvents(); // <-- Use events from context
+  const { events: allEvents, loading: eventsLoading } = useEvents();
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [liveEvents, setLiveEvents] = useState<Event[]>([]);
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'live' | 'past'>('upcoming');
   const [fadeAnim] = useState(new Animated.Value(0.3));
 
   useEffect(() => {
@@ -48,15 +49,27 @@ export default function EventsScreen() {
   useEffect(() => {
     if (!profile || !allEvents) {
       setUpcomingEvents([]);
+      setLiveEvents([]);
       setPastEvents([]);
       return;
     }
 
     const now = new Date();
 
-    // Filter and sort upcoming events
+    // Filter live events (currently happening)
+    const live = allEvents.filter((event) => {
+      const startDate = new Date(event.date_start);
+      const endDate = new Date(event.date_end);
+      return startDate <= now && now <= endDate;
+    });
+
+    // Filter and sort upcoming events (excluding live events)
     const upcoming = allEvents
-      .filter((event) => new Date(event.date_start) >= now)
+      .filter((event) => {
+        const startDate = new Date(event.date_start);
+        const endDate = new Date(event.date_end);
+        return startDate > now;
+      })
       .sort(
         (a, b) =>
           new Date(a.date_start).getTime() -
@@ -65,15 +78,33 @@ export default function EventsScreen() {
 
     // Filter and sort past events
     const past = allEvents
-      .filter((event) => new Date(event.date_start) < now)
+      .filter((event) => new Date(event.date_end) < now)
       .sort(
         (a, b) =>
           new Date(b.date_start).getTime() - new Date(a.date_start).getTime()
       );
 
+    setLiveEvents(live);
     setUpcomingEvents(upcoming);
     setPastEvents(past);
+
+    // Auto-switch to live tab if there are live events and we're on upcoming
+    if (live.length > 0 && activeTab === 'upcoming') {
+      setActiveTab('live');
+    }
   }, [profile, allEvents]);
+
+  useEffect(() => {
+    if (allEvents) {
+      allEvents.forEach(event => {
+        console.log('event:', event.name, event.date_start, event.date_end);
+      });
+    }
+  }, [allEvents]);
+
+  useEffect(() => {
+    console.log('liveEvents:', liveEvents);
+  }, [liveEvents]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -155,9 +186,13 @@ export default function EventsScreen() {
             </Text>
           </View>
         </View>
-        {/* Status badge - Updated to match home screen style */}
-        {activeTab === 'upcoming' && (
-          <View style={styles.statusContainer}>
+        {/* Status badge */}
+        <View style={styles.statusContainer}>
+          {activeTab === 'live' ? (
+            <Text style={[styles.eventStatus, styles.statusLive]}>
+              Live now
+            </Text>
+          ) : activeTab === 'upcoming' ? (
             <Text
               style={[
                 styles.eventStatus,
@@ -168,14 +203,27 @@ export default function EventsScreen() {
             >
               {event.status === "planned" || event.status === "Planning" ? "Planning" : "Confirmed"}
             </Text>
-          </View>
-        )}
+          ) : null}
+        </View>
       </View>
     </TouchableOpacity>
   );
 
   const renderEvents = () => {
-    const events = activeTab === 'upcoming' ? upcomingEvents : pastEvents;
+    let events;
+    switch (activeTab) {
+      case 'live':
+        events = liveEvents;
+        break;
+      case 'upcoming':
+        events = upcomingEvents;
+        break;
+      case 'past':
+        events = pastEvents;
+        break;
+      default:
+        events = upcomingEvents;
+    }
     
     if (events.length === 0) {
       return (
@@ -199,7 +247,6 @@ export default function EventsScreen() {
     <SafeAreaView style={styles.container} edges={["right", "left", "bottom"]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Manage your hangouts</Text>
-        {/* Updated New Event button to match home screen */}
         <TouchableOpacity 
           style={styles.newEventBtn} 
           onPress={() => router.push("/events/create")}
@@ -218,6 +265,16 @@ export default function EventsScreen() {
             Upcoming
           </Text>
         </TouchableOpacity>
+        {liveEvents.length > 0 && (
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'live' && styles.activeTab, styles.liveTab]}
+            onPress={() => setActiveTab('live')}
+          >
+            <Text style={[styles.tabText, activeTab === 'live' && styles.activeTabText]}>
+              Live ({liveEvents.length})
+            </Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           style={[styles.tab, activeTab === 'past' && styles.activeTab]}
           onPress={() => setActiveTab('past')}
@@ -253,7 +310,6 @@ const styles = StyleSheet.create({
     fontWeight: "500", 
     color: "#333" 
   },
-  // Updated New Event button styles to match home screen
   newEventBtn: {
     backgroundColor: "#4CAF50",
     paddingHorizontal: 12,
@@ -283,6 +339,9 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     backgroundColor: "#f6fff5",
+  },
+  liveTab: {
+    backgroundColor: "#fff5f5",
   },
   tabText: {
     color: "#888",
@@ -356,7 +415,6 @@ const styles = StyleSheet.create({
     color: "#666",
     fontSize: 12
   },
-  // Updated status styles to match home screen
   statusContainer: {
     position: "absolute",
     top: 0,
@@ -377,6 +435,10 @@ const styles = StyleSheet.create({
   statusPlanning: { 
     backgroundColor: "#fff3e0", 
     color: "#ef6c00" 
+  },
+  statusLive: {
+    backgroundColor: "#ff6b35",
+    color: "#fff"
   },
   emptyStateContainer: {
     alignItems: "center",

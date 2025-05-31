@@ -28,7 +28,8 @@ export default function AppHeader({ onNotificationPress, onProfilePress }: AppHe
 
     const checkNotifications = async () => {
       const { data } = await notificationController.getUserNotifications(profile.prof_id);
-      setHasNotifications(data !== null && data.length > 0);
+      // Only show red dot if there are unread notifications
+      setHasNotifications(data?.some(n => !n.read));
     };
 
     const setupSubscription = async () => {
@@ -58,7 +59,17 @@ export default function AppHeader({ onNotificationPress, onProfilePress }: AppHe
     };
   }, [profile]);
 
-  const handleNotificationPress = () => {
+  const handleNotificationPress = async () => {
+    if (profile) {
+      // Mark all notifications as read in the database
+      await supabase
+        .from('notification')
+        .update({ read: true })
+        .eq('prof_id', profile.prof_id)
+        .eq('read', false);
+
+      setHasNotifications(false);
+    }
     if (onNotificationPress) {
       onNotificationPress();
     } else {

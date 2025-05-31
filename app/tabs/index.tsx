@@ -12,29 +12,48 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Event } from "../../types";
 import { useAuth } from "../../hooks/useAuth";
-import { useEvents } from "../../contexts/EventsContext"; // <-- Use EventsContext
+import { useEvents } from "../../contexts/EventsContext";
 
 export default function HomeScreen() {
   const router = useRouter();
   const { profile, loading: authLoading } = useAuth();
-  const { events: allEvents, loading: eventsLoading } = useEvents(); // <-- Use events from context
+  const { events: allEvents, loading: eventsLoading } = useEvents();
 
   const [events, setEvents] = useState<Event[]>([]);
+  const [liveEvents, setLiveEvents] = useState<Event[]>([]);
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
 
   // Filter and sort events from context
   useEffect(() => {
     if (!profile || !allEvents) {
       setEvents([]);
+      setLiveEvents([]);
       setPastEvents([]);
       return;
     }
 
     const now = new Date();
 
-    // Filter and sort upcoming events
+    // Filter live events (currently happening)
+    const live = allEvents.filter((event) => {
+      const startDate = new Date(event.date_start);
+      const endDate = new Date(event.date_end);
+      return startDate <= now && now <= endDate;
+    });
+
+    // Filter and sort upcoming events (excluding live events)
     const upcoming = allEvents
-      .filter((event) => new Date(event.date_start) >= now)
+      .filter((event) => {
+        const startDate = new Date(event.date_start);
+        const endDate = new Date(event.date_end);
+        return startDate > now || (startDate <= now && now <= endDate);
+      })
+      .filter((event) => {
+        // Exclude live events from upcoming
+        const startDate = new Date(event.date_start);
+        const endDate = new Date(event.date_end);
+        return !(startDate <= now && now <= endDate);
+      })
       .sort(
         (a, b) =>
           new Date(a.date_start).getTime() -
@@ -43,12 +62,13 @@ export default function HomeScreen() {
 
     // Filter and sort past events
     const past = allEvents
-      .filter((event) => new Date(event.date_start) < now)
+      .filter((event) => new Date(event.date_end) < now)
       .sort(
         (a, b) =>
           new Date(b.date_start).getTime() - new Date(a.date_start).getTime()
       );
 
+    setLiveEvents(live);
     setEvents(upcoming);
     setPastEvents(past);
   }, [profile, allEvents]);
@@ -77,6 +97,13 @@ export default function HomeScreen() {
     return event.attendees_count ?? 1;
   };
 
+  const isEventLive = (event) => {
+    const now = new Date();
+    const startDate = new Date(event.date_start);
+    const endDate = new Date(event.date_end);
+    return startDate <= now && now <= endDate;
+  };
+
   if (authLoading || eventsLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -103,6 +130,59 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Live Events */}
+        {liveEvents.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Live Events</Text>
+              <TouchableOpacity onPress={() => router.push("/tabs/events")}>
+                <Text style={styles.seeAll}>See all</Text>
+              </TouchableOpacity>
+            </View>
+
+            {liveEvents.slice(0, 3).map((event) => (
+              <TouchableOpacity
+                key={event.event_id}
+                style={styles.eventCard}
+                onPress={() => router.push(`/events/${event.event_id}`)}
+              >
+                <Image
+                  source={{
+                    uri: event.picture || "https://via.placeholder.com/100x100",
+                  }}
+                  style={styles.eventImage}
+                />
+                <View style={styles.eventContent}>
+                  <View style={styles.eventRow}>
+                    <Text style={styles.eventTitle}>{event.name}</Text>
+                  </View>
+                  <View style={styles.eventDetails}>
+                    <View style={styles.eventDetailRow}>
+                      <Ionicons name="calendar-outline" size={14} color="#888" style={styles.eventIcon} />
+                      <Text style={styles.eventDate}>
+                        {formatDateRange(event.date_start, event.date_end)}
+                      </Text>
+                    </View>
+                    <View style={styles.eventDetailRow}>
+                      <Ionicons name="location-outline" size={14} color="#888" style={styles.eventIcon} />
+                      <Text style={styles.eventLocation}>{event.address}</Text>
+                    </View>
+                    <View style={styles.eventDetailRow}>
+                      <Ionicons name="people-outline" size={14} color="#888" style={styles.eventIcon} />
+                      <Text style={styles.eventAttendees}>{getAttendeeCount(event)} people</Text>
+                    </View>
+                  </View>
+                  <View style={styles.statusContainer}>
+                    <Text style={[styles.eventStatus, styles.statusLive]}>
+                      Live now
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
+
         {/* Upcoming Events */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Upcoming Events</Text>
@@ -381,6 +461,10 @@ const styles = StyleSheet.create({
   statusPlanning: { 
     backgroundColor: "#fff3e0", 
     color: "#ef6c00" 
+  },
+  statusLive: {
+    backgroundColor: "#ff6b35",
+    color: "#fff"
   },
   noEventsText: { 
     textAlign: "center", 

@@ -38,7 +38,22 @@ export const notificationController = {
     }
   },
 
-  // Mark notification as read (by deleting it)
+  // Mark notification as read
+  async markAsRead(notifId: string): Promise<{ error: any }> {
+    try {
+      const { error } = await supabase
+        .from('notification')
+        .update({ read: true })
+        .eq('notif_id', notifId);
+
+      if (error) throw error;
+      return { error: null };
+    } catch (error) {
+      console.error('Mark notification as read error:', error);
+      return { error };
+    }
+  },
+  
   async deleteNotification(notifId: string): Promise<{ error: any }> {
     try {
       const { error } = await supabase

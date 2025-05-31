@@ -18,6 +18,7 @@ import { eventController } from "../../../controllers/eventController";
 import { friendController } from "../../../controllers/friendController";
 import AppHeader from "../../components/AppHeader";
 import { useProfile } from "../../../contexts/ProfileContext"; // Adjust path
+import { useNotifications } from "../../../contexts/NotificationsContext";
 
 export default function ProfileScreen() {
   const { user } = useAuth();
@@ -29,15 +30,17 @@ export default function ProfileScreen() {
     hosted: 5
   });
   
-  const [notifications, setNotifications] = useState([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(true);
-
-  // console.log("Profile:", profile);
+  const {
+    notifications,
+    loading: notificationsLoading,
+    refreshNotifications,
+    markNotificationAsRead,
+  } = useNotifications();
 
   useEffect(() => {
     if (profile) {
       fetchStats();
-      fetchNotifications();
+      // fetchNotifications(); // Removed local fetchNotifications
     }
   }, [profile]);
 
@@ -58,21 +61,6 @@ export default function ProfileScreen() {
     } catch (error) {
       console.error("Error fetching stats:", error);
     }
-  };
-
-  const fetchNotifications = async () => {
-    if (!profile) return;
-    
-    setNotificationsLoading(true);
-    const { data, error } = await notificationController.getUserNotifications(profile.prof_id);
-    
-    if (!error && data) {
-      setNotifications(data.slice(0, 3)); // Only show first 3 notifications
-    } else {
-      console.error("Error fetching notifications:", error);
-    }
-    
-    setNotificationsLoading(false);
   };
 
   const handleEditProfile = () => {
@@ -192,12 +180,21 @@ export default function ProfileScreen() {
               <Text style={styles.seeAllText}>See all</Text>
             </TouchableOpacity>
           </View>
-          
           {notificationsLoading ? (
             <ActivityIndicator size="small" color="#0B5E42" style={styles.notificationLoader} />
           ) : notifications.length > 0 ? (
-            notifications.map((notification, index) => (
-              <View key={notification.notif_id || index} style={styles.notificationItem}>
+            notifications.slice(0, 3).map((notification, index) => (
+              <TouchableOpacity
+                key={notification.notif_id || index}
+                style={[
+                  styles.notificationItem,
+                  !notification.read && styles.unreadNotification,
+                ]}
+                onPress={async () => {
+                  await markNotificationAsRead(notification.notif_id);
+                  router.push(`/notifications/${notification.notif_id}`);
+                }}
+              >
                 <Text style={styles.notificationTitle}>
                   {notification.title || `${notification.count || 'New'} messages from ${notification.source || 'event'}`}
                 </Text>
@@ -205,7 +202,7 @@ export default function ProfileScreen() {
                 <Text style={styles.notificationDate}>
                   {new Date(notification.date).toLocaleDateString() || notification.date}
                 </Text>
-              </View>
+              </TouchableOpacity>
             ))
           ) : (
             <Text style={styles.noNotificationsText}>No notifications</Text>
@@ -393,10 +390,12 @@ const styles = StyleSheet.create({
     marginVertical: 20
   },
   notificationItem: {
-    backgroundColor: '#f0f9f4',
     padding: 12,
     borderRadius: 8,
     marginBottom: 12
+  },
+  unreadNotification: {
+    backgroundColor: "#f0f9f0", // Light green background for unread
   },
   notificationTitle: {
     fontSize: 14,
