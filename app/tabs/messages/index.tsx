@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   TextInput,
   Image,
   ActivityIndicator,
+  Animated,
+  Easing,
 } from "react-native"
 import { useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
@@ -23,92 +25,120 @@ export default function MessagesScreen() {
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [reloading, setReloading] = useState(false)
+  const spinAnim = useRef(new Animated.Value(0)).current
+
+  // Move spin outside so it's accessible
+  const spin = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  })
+
+  // Move handleReload outside so it's accessible
+  const handleReload = () => {
+    setReloading(true)
+    Animated.timing(spinAnim, {
+      toValue: 1,
+      duration: 800,
+      easing: Easing.linear,
+      useNativeDriver: true,
+    }).start(() => {
+      spinAnim.setValue(0)
+      setReloading(false)
+    })
+    // Call fetchMessages directly
+    fetchMessages()
+  }
+
+  // Move fetchMessages outside useEffect so handleReload can call it
+  const fetchMessages = async () => {
+    setLoading(true)
+    try {
+      // Get all latest friend messages where you are sender or friend
+      const { data: messagesData, error: messagesError } = await supabase
+        .from("message")
+        .select("*, sender:sender_id(prof_id, name, photo), friend:friend_id(prof_id, name, photo)")
+        .or(`sender_id.eq.${profile.prof_id},friend_id.eq.${profile.prof_id}`)
+        .is("event_id", null)
+        .order("created_at", { ascending: false })
+
+      if (messagesError) throw messagesError
+
+      // Group by the other user's profile
+      const conversations = {}
+      messagesData.forEach((msg) => {
+        // Always pick the other user, never yourself
+        let other = null
+        if (msg.sender && msg.sender.prof_id !== profile.prof_id) {
+          other = msg.sender
+        }
+        if (msg.friend && msg.friend.prof_id !== profile.prof_id) {
+          other = msg.friend
+        }
+        // If no valid other user, skip
+        if (!other) return
+        // Only add if not already present (latest message per conversation)
+        if (!conversations[other.prof_id]) {
+          conversations[other.prof_id] = {
+            id: other.prof_id,
+            type: "friend",
+            name: other.name,
+            photo: other.photo,
+            lastMessage: msg.message,
+            timestamp: formatTimestamp(msg.created_at),
+            created_at: msg.created_at,
+          }
+        }
+      })
+
+      // Get all events the user is attending (keep your event logic)
+      const { data: eventsData, error: eventsError } = await supabase
+        .from("attend")
+        .select("event:event_id(*)")
+        .eq("prof_id", profile.prof_id)
+
+      if (eventsError) throw eventsError
+
+      const eventMessages = await Promise.all(
+        eventsData.map(async (eventData) => {
+          const event = eventData.event
+          const { data, error } = await supabase
+            .from("message")
+            .select("*, sender:sender_id(prof_id, name, photo)")
+            .eq("event_id", event.event_id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+
+          if (error || !data || data.length === 0) return null
+
+          return {
+            id: event.event_id,
+            type: "event",
+            name: event.name,
+            photo: event.picture,
+            lastMessage: data[0].message,
+            sender: data[0].sender?.name,
+            timestamp: formatTimestamp(data[0].created_at),
+            created_at: data[0].created_at,
+          }
+        }),
+      )
+      // Combine and sort all messages
+      const allMessages = [
+        ...Object.values(conversations),
+        ...eventMessages.filter((msg) => msg !== null),
+      ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+
+      setMessages(allMessages)
+    } catch (error) {
+      console.error("Error fetching messages:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (!profile) return
-
-    const fetchMessages = async () => {
-      setLoading(true)
-      try {
-        // Get all friends
-        const { data: friendsData, error: friendsError } = await supabase
-          .from("friend")
-          .select("friend_id, profile:prof_id(*)")
-          .eq("friend_id", profile.prof_id)
-
-        if (friendsError) throw friendsError
-
-        // Get all events the user is attending
-        const { data: eventsData, error: eventsError } = await supabase
-          .from("attend")
-          .select("event:event_id(*)")
-          .eq("prof_id", profile.prof_id)
-
-        if (eventsError) throw eventsError
-
-        // Get latest message for each friend
-        const friendMessages = await Promise.all(
-          friendsData.map(async (friend) => {
-            const { data, error } = await supabase
-              .from("message")
-              .select("*, sender:sender_id(prof_id, name, photo)")
-              .or(`sender_id.eq.${profile.prof_id},friend_id.eq.${profile.prof_id}`)
-              .order("created_at", { ascending: false })
-              .limit(1)
-
-            if (error || !data || data.length === 0) return null
-
-            return {
-              id: friend.friend_id,
-              type: "friend",
-              name: friend.profile.name,
-              photo: friend.profile.photo,
-              lastMessage: data[0].message,
-              timestamp: formatTimestamp(data[0].created_at),
-              created_at: data[0].created_at,
-            }
-          }),
-        )
-
-        // Get latest message for each event
-        const eventMessages = await Promise.all(
-          eventsData.map(async (eventData) => {
-            const event = eventData.event
-            const { data, error } = await supabase
-              .from("message")
-              .select("*, sender:sender_id(prof_id, name, photo)")
-              .eq("event_id", event.event_id)
-              .order("created_at", { ascending: false })
-              .limit(1)
-
-            if (error || !data || data.length === 0) return null
-
-            return {
-              id: event.event_id,
-              type: "event",
-              name: event.name,
-              photo: event.picture,
-              lastMessage: data[0].message,
-              sender: data[0].sender?.name,
-              timestamp: formatTimestamp(data[0].created_at),
-              created_at: data[0].created_at,
-            }
-          }),
-        )
-
-        // Combine and sort all messages
-        const allMessages = [...friendMessages, ...eventMessages]
-          .filter((msg) => msg !== null)
-          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-
-        setMessages(allMessages)
-      } catch (error) {
-        console.error("Error fetching messages:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchMessages()
 
     // Set up real-time subscriptions
@@ -162,10 +192,11 @@ export default function MessagesScreen() {
     <TouchableOpacity
       style={styles.messageItem}
       onPress={() => {
+        console.log("Navigating to chat", item)
         if (item.type === "friend") {
-          router.push(`/chat/${item.id}`)
-        } else {
-          router.push(`/event-chat/${item.id}`)
+          router.push(`/chat/${item.id}?type=friend`)
+        } else if (item.type === "event") {
+          router.push(`/chat/${item.id}?type=event`)
         }
       }}
     >
@@ -191,7 +222,14 @@ export default function MessagesScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Messages</Text>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Text style={styles.title}>Messages</Text>
+          <TouchableOpacity onPress={handleReload} style={{ marginLeft: 10 }} disabled={reloading}>
+            <Animated.View style={{ transform: [{ rotate: spin }] }}>
+              <Ionicons name="reload" size={22} color="#4CAF50" />
+            </Animated.View>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.subtitle}>Contact your friends and groups</Text>
       </View>
 

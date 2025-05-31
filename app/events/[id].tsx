@@ -583,7 +583,7 @@ export default function EventDetailScreen() {
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => router.push(`/event-chat/${id}`)} // <-- Add this line
+            onPress={() => router.push(`/chat/${id}?type=event`)} // <-- Add this line
           >
             <Ionicons name="chatbubble-outline" size={20} color="#0B5E42" />
             <Text style={styles.actionText}>Chat</Text>

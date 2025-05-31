@@ -338,9 +338,9 @@ export default function ChatScreen() {
             {/* <Text style={styles.headerStatus}>{getChatSubtitle()}</Text> */}
           </View>
         </View>
-        <TouchableOpacity style={styles.moreButton}>
+        {/* <TouchableOpacity style={styles.moreButton}>
           <Ionicons name="ellipsis-vertical" size={24} color="#333" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       <FlatList
@@ -357,9 +357,9 @@ export default function ChatScreen() {
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
         style={styles.inputContainer}
       >
-        <TouchableOpacity style={styles.attachButton}>
+        {/* <TouchableOpacity style={styles.attachButton}>
           <Ionicons name="add-circle-outline" size={24} color="#4CAF50" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         <TextInput
           style={styles.input}
           value={newMessage}
