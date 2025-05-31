@@ -122,7 +122,7 @@ export default function CreateEventScreen() {
         }
       }
     } catch (error) {
-      console.error("Error searching for attendee:", error)
+      // console.error("Error searching for attendee:", error)
       Alert.alert("Error", "Failed to search for user")
     }
   }

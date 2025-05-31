@@ -241,6 +241,24 @@ export default function EventDetailScreen() {
     return `${startDate.toLocaleDateString("en-US", { month: "long", day: "numeric" })}-${endDate.toLocaleDateString("en-US", options)}`
   }
 
+  function formatTime(timeStr) {
+    if (!timeStr) return ""
+    // Handles both "HH:mm" and "HH:mm:ss" and trims spaces
+    const [hourStr, minuteStr] = timeStr.trim().split(":")
+    let hour = parseInt(hourStr, 10)
+    const minute = minuteStr ? minuteStr.padStart(2, "0") : "00"
+    let ampm = "AM"
+    // Fix: treat time as UTC and convert to local time
+    const date = new Date()
+    date.setUTCHours(hour)
+    date.setUTCMinutes(parseInt(minute, 10))
+    date.setUTCSeconds(0)
+    let localHour = date.getHours()
+    ampm = localHour >= 12 ? "PM" : "AM"
+    localHour = localHour % 12 || 12
+    return `${localHour}:${minute} ${ampm}`
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -324,7 +342,11 @@ export default function EventDetailScreen() {
 
           <View style={styles.detailItem}>
             <Ionicons name="time-outline" size={20} color="#0B5E42" style={styles.detailIcon} />
-            <Text style={styles.detailText}>{event.time || "6:00 AM Departure"}</Text>
+            <Text style={styles.detailText}>
+              {event.time
+                ? `${formatTime(event.time)} Departure`
+                : "Departure"}
+            </Text>
           </View>
 
           <View style={styles.detailItem}>
@@ -415,7 +437,10 @@ export default function EventDetailScreen() {
             <Text style={styles.actionText}>Budget</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push(`/event-chat/${id}`)} // <-- Add this line
+          >
             <Ionicons name="chatbubble-outline" size={20} color="#0B5E42" />
             <Text style={styles.actionText}>Chat</Text>
           </TouchableOpacity>

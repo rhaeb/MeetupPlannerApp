@@ -8,7 +8,7 @@ export default function EventChatScreen() {
   const { id } = useLocalSearchParams()
 
   useEffect(() => {
-    // Redirect to the main chat screen with event type
+    // Just call router.replace, don't return it
     router.replace(`/chat/${id}?type=event`)
   }, [id, router])
 
